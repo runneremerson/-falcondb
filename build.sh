@@ -1,8 +1,9 @@
 #!/bin/sh
 BASE_DIR=`pwd`
-JEMALLOC_PATH="$BASE_DIR/deps/jemalloc-3.3.1"
 ROCKSDB_PATH="$BASE_DIR/deps/rocksdb-4.2"
 SNAPPY_PATH="$BASE_DIR/deps/snappy-1.1.1"
+ZLIB_PATH="$BASE_DIR/deps/zlib-1.2.8"
+
 
 if test -z "$TARGET_OS"; then
 	TARGET_OS=`uname -s`
@@ -62,37 +63,35 @@ cd $SNAPPY_PATH
 if [ ! -f Makefile ]; then
 	echo ""
 	echo "##### building snappy... #####"
-	./configure $SNAPPY_HOST
+	./configure 
 	# FUCK! snappy compilation doesn't work on some linux!
 	find . | xargs touch
 	make
 	echo "##### building snappy finished #####"
+    sudo make install
+	echo "##### installing snappy finished #####"
 	echo ""
 fi
+
 cd "$DIR"
 
+cd $ZLIB_PATH
+if [ ! -f Makefile ]; then
+	echo ""
+	echo "##### building zlib... #####"
+	./configure 
+	# FUCK! zlib compilation doesn't work on some linux!
+	find . | xargs touch
+	make
+	echo "##### building zlib finished #####"
+    sudo make install
+	echo "##### installing zlib finished #####"
+	echo ""
+fi
 
-case "$TARGET_OS" in
-	CYGWIN*|FreeBSD|OS_ANDROID_CROSSCOMPILE)
-		echo "not using jemalloc on $TARGET_OS"
-	;;
-	*)
-		DIR=`pwd`
-		cd $JEMALLOC_PATH
-		if [ ! -f Makefile ]; then
-			echo ""
-			echo "##### building jemalloc... #####"
-			./configure
-			make
-			echo "##### building jemalloc finished #####"
-			echo ""
-		fi
-		cd "$DIR"
-	;;
-esac
+cd "$DIR"
 
-
-rm -f ldb/version.h
+rm -f falcondb/version.h
 echo "#ifndef FALCONDB_DEPS_H" >> falcondb/version.h
 echo "#define FALCONDB_DEPS_H" >> falcondb/version.h
 echo "#ifndef FALCONDB_VERSION" >> falcondb/version.h
@@ -105,29 +104,20 @@ echo CC=$CC >> build_config.mk
 echo CXX=$CXX >> build_config.mk
 echo "MAKE=$MAKE" >> build_config.mk
 echo "ROCKSDB_PATH=$ROCKSDB_PATH" >> build_config.mk
-echo "JEMALLOC_PATH=$JEMALLOC_PATH" >> build_config.mk
 echo "SNAPPY_PATH=$SNAPPY_PATH" >> build_config.mk
+echo "ZLIB_PATH=$ZLIB_PATH" >> build_config.mk
 
 echo "CFLAGS=" >> build_config.mk
 #echo "CFLAGS = -DNDEBUG -D__STDC_FORMAT_MACROS -Wall -O2 -Wno-sign-compare" >> build_config.mk
 echo "CFLAGS = -Wall -O0 -g -Wno-sign-compare" >> build_config.mk
 echo "CFLAGS += ${PLATFORM_CFLAGS}" >> build_config.mk
-echo "CFLAGS += -I \"$ROCKSDB_PATH/include\"" >> build_config.mk
+echo "CFLAGS += -I $ROCKSDB_PATH/include" >> build_config.mk
 
 echo "CLIBS=" >> build_config.mk
-echo "CLIBS += ${PLATFORM_CLIBS}" >> build_config.mk
-echo "CLIBS += \"$ROCKSDB_PATH/librocksdb.a\"" >> build_config.mk
-echo "CLIBS += \"$SNAPPY_PATH/libs/libsnappy.a\"" >> build_config.mk
-
-
-case "$TARGET_OS" in
-	CYGWIN*|FreeBSD|OS_ANDROID_CROSSCOMPILE)
-	;;
-	*)
-		echo "CLIBS += \"$JEMALLOC_PATH/lib/libjemalloc.a\"" >> build_config.mk
-		echo "CFLAGS += -I \"$JEMALLOC_PATH/include\"" >> build_config.mk
-	;;
-esac
+echo "CLIBS += ${PLATFORM_CLIBS} " >> build_config.mk
+echo "CLIBS += $ROCKSDB_PATH/librocksdb.a " >> build_config.mk
+echo "CLIBS += $SNAPPY_PATH/.libs/libsnappy.a " >> build_config.mk
+echo "CLIBS += $ZLIB_PATH/libz.a " >> build_config.mk
 
 
 if test -z "$TMPDIR"; then
