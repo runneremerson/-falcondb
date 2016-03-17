@@ -1,0 +1,14 @@
+## Compilation
+
+Just run `make` will compile falcondb in release/debug mode and build the test cases in directory test.
+We do depend on newer gcc/clang with C++11 support.
+
+tcmalloc is preferred or you can use jemalloc instead by add specific module in build.sh
+
+
+## Supported platforms
+* **Linux - Ubuntu**
+    * Upgrade your gcc to version at least 4.7 to get C++11 support.
+    * Install gflags. First, try: `sudo apt-get install libgflags-dev`
+      If this doesn't work and you're using Ubuntu, here's a nice tutorial:
+      (http://askubuntu.com/questions/312173/installing-gflags-12-04)
