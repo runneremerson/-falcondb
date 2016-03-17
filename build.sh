@@ -68,8 +68,6 @@ if [ ! -f Makefile ]; then
 	find . | xargs touch
 	make
 	echo "##### building snappy finished #####"
-    sudo make install
-	echo "##### installing snappy finished #####"
 	echo ""
 fi
 
@@ -84,8 +82,6 @@ if [ ! -f Makefile ]; then
 	find . | xargs touch
 	make
 	echo "##### building zlib finished #####"
-    sudo make install
-	echo "##### installing zlib finished #####"
 	echo ""
 fi
 
@@ -118,6 +114,18 @@ echo "CLIBS += ${PLATFORM_CLIBS} " >> build_config.mk
 echo "CLIBS += $ROCKSDB_PATH/librocksdb.a " >> build_config.mk
 echo "CLIBS += $SNAPPY_PATH/.libs/libsnappy.a " >> build_config.mk
 echo "CLIBS += $ZLIB_PATH/libz.a " >> build_config.mk
+
+rm -f $ROCKSDB_PATH/deps.mk
+
+echo "ROCKSDB_DEPS_CFLAGS=" >> $ROCKSDB_PATH/deps.mk
+echo "ROCKSDB_DEPS_CFLAGS += -I $SNAPPY_PATH " >> $ROCKSDB_PATH/deps.mk
+echo "ROCKSDB_DEPS_CFLAGS += -I $ZLIB_PATH " >> $ROCKSDB_PATH/deps.mk
+
+
+echo "ROCKSDB_DEPS_LDFLAGS=" >> $ROCKSDB_PATH/deps.mk
+echo "ROCKSDB_DEPS_LDFLAGS += -L $SNAPPY_PATH/.libs" >> $ROCKSDB_PATH/deps.mk
+echo "ROCKSDB_DEPS_LDFLAGS += -L $ZLIB_PATH" >> $ROCKSDB_PATH/deps.mk
+
 
 
 if test -z "$TMPDIR"; then

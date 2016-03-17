@@ -42,6 +42,9 @@ if test -z "$OUTPUT"; then
   exit 1
 fi
 
+ROCKSDB_DEPS_CFLAGS=$2
+ROCKSDB_DEPS_LDFLAGS=$3
+
 # we depend on C++11
 PLATFORM_CXXFLAGS="-std=c++11"
 # we currently depend on POSIX platform
@@ -204,7 +207,7 @@ EOF
 
     # Test whether Snappy library is installed
     # http://code.google.com/p/snappy/
-    $CXX $CFLAGS -x c++ - -o /dev/null 2>/dev/null  <<EOF
+    $CXX $CFLAGS $ROCKSDB_DEPS_CFLAGS -x c++ - -o /dev/null 2>/dev/null  <<EOF
       #include <snappy.h>
       int main() {}
 EOF
@@ -217,7 +220,7 @@ EOF
     # Test whether gflags library is installed
     # http://gflags.github.io/gflags/
     # check if the namespace is gflags
-    $CXX $CFLAGS -x c++ - -o /dev/null 2>/dev/null << EOF
+    $CXX $CFLAGS  -x c++ - -o /dev/null 2>/dev/null << EOF
       #include <gflags/gflags.h>
       using namespace gflags;
       int main() {}
@@ -239,7 +242,7 @@ EOF
     fi
 
     # Test whether zlib library is installed
-    $CXX $CFLAGS $COMMON_FLAGS -x c++ - -o /dev/null 2>/dev/null  <<EOF
+    $CXX $CFLAGS $COMMON_FLAGS $ROCKSDB_DEPS_CFLAGS -x c++ - -o /dev/null 2>/dev/null  <<EOF
       #include <zlib.h>
       int main() {}
 EOF
@@ -362,8 +365,9 @@ elif test -z "$PORTABLE"; then
   COMMON_FLAGS="$COMMON_FLAGS -march=native "
 fi
 
-PLATFORM_CCFLAGS="$PLATFORM_CCFLAGS $COMMON_FLAGS"
-PLATFORM_CXXFLAGS="$PLATFORM_CXXFLAGS $COMMON_FLAGS"
+PLATFORM_CCFLAGS="$PLATFORM_CCFLAGS $COMMON_FLAGS $ROCKSDB_DEPS_CFLAGS"
+PLATFORM_CXXFLAGS="$PLATFORM_CXXFLAGS $COMMON_FLAGS $ROCKSDB_DEPS_CFLAGS"
+PLATFORM_LDFLAGS="$PLATFORM_LDFLAGS $ROCKSDB_DEPS_LDFLAGS"
 
 VALGRIND_VER="$VALGRIND_VER"
 
