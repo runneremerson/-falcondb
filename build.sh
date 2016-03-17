@@ -59,11 +59,25 @@ esac
 
 
 DIR=`pwd`
+
+cd "$DIR"
+cd $ZLIB_PATH && CFLAGS='-fPIC'
+if [ ! -f Makefile ]; then
+	echo ""
+	echo "##### building zlib... #####"
+	./configure --static 
+	# FUCK! zlib compilation doesn't work on some linux!
+	find . | xargs touch
+	make
+	echo "##### building zlib finished #####"
+	echo ""
+fi
+
 cd $SNAPPY_PATH
 if [ ! -f Makefile ]; then
 	echo ""
 	echo "##### building snappy... #####"
-	./configure 
+	./configure  --with-pic --enable-static
 	# FUCK! snappy compilation doesn't work on some linux!
 	find . | xargs touch
 	make
@@ -72,21 +86,6 @@ if [ ! -f Makefile ]; then
 fi
 
 cd "$DIR"
-
-cd $ZLIB_PATH
-if [ ! -f Makefile ]; then
-	echo ""
-	echo "##### building zlib... #####"
-	./configure 
-	# FUCK! zlib compilation doesn't work on some linux!
-	find . | xargs touch
-	make
-	echo "##### building zlib finished #####"
-	echo ""
-fi
-
-cd "$DIR"
-
 rm -f falcondb/version.h
 echo "#ifndef FALCONDB_DEPS_H" >> falcondb/version.h
 echo "#define FALCONDB_DEPS_H" >> falcondb/version.h
