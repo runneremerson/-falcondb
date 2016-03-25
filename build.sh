@@ -61,11 +61,11 @@ esac
 DIR=`pwd`
 
 cd "$DIR"
-cd $ZLIB_PATH && CFLAGS='-fPIC'
+cd $ZLIB_PATH
 if [ ! -f Makefile ]; then
 	echo ""
 	echo "##### building zlib... #####"
-	./configure --static 
+	CFLAGS='-fPIC' ./configure --static 
 	# FUCK! zlib compilation doesn't work on some linux!
 	find . | xargs touch
 	make
@@ -114,6 +114,21 @@ echo "CLIBS += $ROCKSDB_PATH/librocksdb.a " >> build_config.mk
 echo "CLIBS += $SNAPPY_PATH/.libs/libsnappy.a " >> build_config.mk
 echo "CLIBS += $ZLIB_PATH/libz.a " >> build_config.mk
 
+
+
+if test -z "$TMPDIR"; then
+    TMPDIR=/tmp
+fi
+
+g++ -x c++ - -o $TMPDIR/falcondb_build_test.$$ 2>/dev/null <<EOF
+	#include <gperftools/tcmalloc.h>
+	int main() {}
+EOF
+if [ "$?" = 0 ]; then
+	echo "CLIBS += -ltcmalloc" >> build_config.mk
+fi
+
+
 rm -f $ROCKSDB_PATH/deps.mk
 
 echo "ROCKSDB_DEPS_CFLAGS=" >> $ROCKSDB_PATH/deps.mk
@@ -124,18 +139,3 @@ echo "ROCKSDB_DEPS_CFLAGS += -I $ZLIB_PATH " >> $ROCKSDB_PATH/deps.mk
 echo "ROCKSDB_DEPS_LDFLAGS=" >> $ROCKSDB_PATH/deps.mk
 echo "ROCKSDB_DEPS_LDFLAGS += -L $SNAPPY_PATH/.libs" >> $ROCKSDB_PATH/deps.mk
 echo "ROCKSDB_DEPS_LDFLAGS += -L $ZLIB_PATH" >> $ROCKSDB_PATH/deps.mk
-
-
-
-if test -z "$TMPDIR"; then
-    TMPDIR=/tmp
-fi
-
-g++ -x c++ - -o $TMPDIR/falcondb_build_test.$$ 2>/dev/null <<EOF
-	#include <unordered_map>
-	int main() {}
-EOF
-if [ "$?" = 0 ]; then
-	echo "CFLAGS += -DNEW_MAC" >> build_config.mk
-fi
-

@@ -6,12 +6,12 @@ include build_config.mk
 all:
 	cd "${ROCKSDB_PATH}"; ${MAKE} static_lib -j 4 
 	cd "${ROCKSDB_PATH}"; ${MAKE} shared_lib
-	#cd falcondb/; ${MAKE}
+	cd falcondb/; ${MAKE}
 	cd test/; ${MAKE}
 
 clean:
 	rm -f *.a
-	#cd falcondb/; ${MAKE} clean
+	cd falcondb/; ${MAKE} clean
 	cd test/; ${MAKE} clean
 
 clean_all: clean

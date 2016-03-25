@@ -105,8 +105,16 @@ typedef struct rocksdb_writeoptions_t    rocksdb_writeoptions_t;
 typedef struct rocksdb_universal_compaction_options_t rocksdb_universal_compaction_options_t;
 typedef struct rocksdb_livefiles_t     rocksdb_livefiles_t;
 typedef struct rocksdb_column_family_handle_t rocksdb_column_family_handle_t;
+typedef struct rocksdb_mutex_t           rocksdb_mutex_t;
 
 /* DB operations */
+extern ROCKSDB_LIBRARY_API rocksdb_mutex_t* rocksdb_mutex_create();
+
+extern ROCKSDB_LIBRARY_API void rocksdb_mutex_destroy(rocksdb_mutex_t* mutex);
+
+extern ROCKSDB_LIBRARY_API void rocksdb_mutex_lock(rocksdb_mutex_t* mutex);
+extern ROCKSDB_LIBRARY_API void rocksdb_mutex_unlock(rocksdb_mutex_t* mutex);
+
 
 extern ROCKSDB_LIBRARY_API rocksdb_t* rocksdb_open(
     const rocksdb_options_t* options, const char* name, char** errptr);

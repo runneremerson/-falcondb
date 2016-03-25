@@ -77,6 +77,7 @@ using rocksdb::BackupableDBOptions;
 using rocksdb::BackupInfo;
 using rocksdb::RestoreOptions;
 using rocksdb::CompactRangeOptions;
+using rocksdb::port::Mutex;
 
 using std::shared_ptr;
 
@@ -107,6 +108,7 @@ struct rocksdb_logger_t          { shared_ptr<Logger>  rep; };
 struct rocksdb_cache_t           { shared_ptr<Cache>   rep; };
 struct rocksdb_livefiles_t       { std::vector<LiveFileMetaData> rep; };
 struct rocksdb_column_family_handle_t  { ColumnFamilyHandle* rep; };
+struct rocksdb_mutex_t           { Mutex*            rep; };
 
 struct rocksdb_compactionfiltercontext_t {
   CompactionFilter::Context rep;
@@ -400,6 +402,25 @@ static char* CopyString(const std::string& str) {
   char* result = reinterpret_cast<char*>(malloc(sizeof(char) * str.size()));
   memcpy(result, str.data(), sizeof(char) * str.size());
   return result;
+}
+
+rocksdb_mutex_t* rocksdb_mutex_create(){
+    rocksdb_mutex_t* result = new rocksdb_mutex_t;
+    result->rep = new Mutex;
+    return result;
+}
+
+void rocksdb_mutex_destroy(rocksdb_mutex_t* mutex){
+   delete mutex->rep; 
+   delete mutex;
+}
+
+void rocksdb_mutex_lock(rocksdb_mutex_t* mutex){
+    mutex->rep->Lock();
+}
+
+void rocksdb_mutex_unlock(rocksdb_mutex_t* mutex){
+    mutex->rep->Unlock();
 }
 
 rocksdb_t* rocksdb_open(
