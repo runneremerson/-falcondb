@@ -1,2 +1,2 @@
 # falcondb
- falcondb is a storage engine base on rocksdb which provide redis data struct
+ falcondb is a storage engine based on rocksdb which provide redis data struct
