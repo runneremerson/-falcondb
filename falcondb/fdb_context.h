@@ -30,8 +30,8 @@ fdb_slot_t** fdb_slots_create(int num_slots);
 void fdb_slots_destroy(int num_slots, fdb_slot_t** slots);
 
 //writebatch
-void fdb_slot_writebatch_commit(fdb_context_t* context, fdb_slot_t* slot, char** errptr);
 void fdb_slot_writebatch_put(fdb_slot_t* slot, const char* key, size_t klen, const char* val, size_t vlen);
 void fdb_slot_writebatch_delete(fdb_slot_t* slot, const char* key, size_t klen);
+void fdb_slot_writebatch_commit(fdb_context_t* context, fdb_slot_t* slot, char** errptr);
 
 #endif //FDB_CONTEXT_H

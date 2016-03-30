@@ -6,7 +6,6 @@
 #if defined(USE_TCMALLOC)
 #include <gperftools/tcmalloc.h>
 #define USE_TCMALLOC 1
-#define fdb_malloc_size(p) tc_malloc_size(p)
 #endif
 
 #if defined(USE_JEMALLOC)

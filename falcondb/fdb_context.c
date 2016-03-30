@@ -106,5 +106,23 @@ void fdb_slots_destroy(int num_slots, fdb_slot_t** slots){
     fdb_free((void*)slots);
 }
 
+void fdb_slot_writebatch_put(fdb_slot_t* slot, const char* key, size_t klen, const char* val, size_t vlen){
+    rocksdb_mutex_lock(slot->mutex_);
+    rocksdb_writebatch_put_cf(slot->batch_, slot->handle_, key, klen, val, vlen); 
+    rocksdb_mutex_unlock(slot->mutex_);
+}
 
+void fdb_slot_writebatch_delete(fdb_slot_t* slot, const char* key, size_t klen){
+    rocksdb_mutex_lock(slot->mutex_);
+    rocksdb_writebatch_delete_cf(slot->batch_, slot->handle_, key, klen);
+    rocksdb_mutex_unlock(slot->mutex_); 
+}
 
+void fdb_slot_writebatch_commit(fdb_context_t* context, fdb_slot_t* slot, char** errptr){
+    rocksdb_writeoptions_t *writeoptions = rocksdb_writeoptions_create();
+    rocksdb_mutex_lock(slot->mutex_); 
+    rocksdb_write(context->db_, writeoptions, slot->batch_, errptr);
+    rocksdb_writebatch_clear(slot->batch_);
+    rocksdb_mutex_unlock(slot->mutex_);
+    rocksdb_writeoptions_destroy(writeoptions);
+}
