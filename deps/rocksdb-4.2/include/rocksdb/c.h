@@ -115,6 +115,16 @@ extern ROCKSDB_LIBRARY_API void rocksdb_mutex_destroy(rocksdb_mutex_t* mutex);
 extern ROCKSDB_LIBRARY_API void rocksdb_mutex_lock(rocksdb_mutex_t* mutex);
 extern ROCKSDB_LIBRARY_API void rocksdb_mutex_unlock(rocksdb_mutex_t* mutex);
 
+extern ROCKSDB_LIBRARY_API void rocksdb_encode_fixed64(char* buf, uint64_t value);
+extern ROCKSDB_LIBRARY_API void rocksdb_encode_fixed32(char* buf, uint32_t value);
+extern ROCKSDB_LIBRARY_API void rocksdb_encode_fixed16(char* buf, uint16_t value);
+extern ROCKSDB_LIBRARY_API void rocksdb_encode_fixed8(char* buf, uint8_t value);
+
+extern ROCKSDB_LIBRARY_API uint64_t rocksdb_decode_fixed64(const char* buf);
+extern ROCKSDB_LIBRARY_API uint32_t rocksdb_decode_fixed32(const char* buf);
+extern ROCKSDB_LIBRARY_API uint16_t rocksdb_decode_fixed16(const char* buf);
+extern ROCKSDB_LIBRARY_API uint8_t  rocksdb_decode_fixed8(const char* buf);
+
 
 extern ROCKSDB_LIBRARY_API rocksdb_t* rocksdb_open(
     const rocksdb_options_t* options, const char* name, char** errptr);

@@ -32,6 +32,7 @@
 #include "rocksdb/table.h"
 #include "rocksdb/utilities/backupable_db.h"
 #include "utilities/merge_operators.h"
+#include "util/coding.h"
 
 using rocksdb::Cache;
 using rocksdb::ColumnFamilyDescriptor;
@@ -421,6 +422,38 @@ void rocksdb_mutex_lock(rocksdb_mutex_t* mutex){
 
 void rocksdb_mutex_unlock(rocksdb_mutex_t* mutex){
     mutex->rep->Unlock();
+}
+
+void rocksdb_encode_fixed64(char* buf, uint64_t value){
+    rocksdb::EncodeFixed64(buf, value);
+}
+
+void rocksdb_encode_fixed32(char* buf, uint32_t value){
+    rocksdb::EncodeFixed32(buf, value);
+}
+
+void rocksdb_encode_fixed16(char* buf, uint16_t value){
+    rocksdb::EncodeFixed16(buf, value);
+}
+
+void rocksdb_encode_fixed8(char* buf, uint8_t value){
+    rocksdb::EncodeFixed8(buf, value);
+}
+
+uint64_t rocksdb_decode_fixed64(const char* buf){
+  return rocksdb::DecodeFixed64(buf);
+}
+
+uint32_t rocksdb_decode_fixed32(const char* buf){
+  return rocksdb::DecodeFixed32(buf);
+}
+
+uint16_t rocksdb_decode_fixed16(const char* buf){
+  return rocksdb::DecodeFixed16(buf);
+}
+
+uint8_t rocksdb_decode_fixed8(const char* buf){
+  return rocksdb::DecodeFixed8(buf);
 }
 
 rocksdb_t* rocksdb_open(

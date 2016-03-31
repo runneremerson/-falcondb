@@ -59,6 +59,8 @@ extern int VarintLength(uint64_t v);
 
 // Lower-level versions of Put... that write directly into a character buffer
 // REQUIRES: dst has enough space for the value being written
+extern void EncodeFixed8(char* dst, uint8_t value);
+extern void EncodeFixed16(char* dst, uint16_t value);
 extern void EncodeFixed32(char* dst, uint32_t value);
 extern void EncodeFixed64(char* dst, uint64_t value);
 
@@ -70,6 +72,24 @@ extern char* EncodeVarint64(char* dst, uint64_t value);
 
 // Lower-level versions of Get... that read directly from a character buffer
 // without any bounds checking.
+inline uint8_t DecodeFixed8(const char* ptr){
+  uint8_t result;
+  memcpy(&result, ptr, sizeof(result));
+  return result;
+}
+
+inline uint16_t DecodeFixed16(const char* ptr){
+
+  if (port::kLittleEndian) {
+    // Load the raw bytes
+    uint16_t result;
+    memcpy(&result, ptr, sizeof(result));  // gcc optimizes this to a plain load
+    return result;
+  } else {
+    return ((static_cast<uint16_t>(static_cast<unsigned char>(ptr[0])))
+        | (static_cast<uint16_t>(static_cast<unsigned char>(ptr[1])) << 8));
+  }
+}
 
 inline uint32_t DecodeFixed32(const char* ptr) {
   if (port::kLittleEndian) {
@@ -116,6 +136,20 @@ inline const char* GetVarint32Ptr(const char* p,
 }
 
 // -- Implementation of the functions declared above
+
+inline void EncodeFixed8(char* buf, uint8_t value) {
+  memcpy(buf, &value, sizeof(value));
+}
+
+inline void EncodeFixed16(char* buf, uint16_t value) {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    memcpy(buf, &value, sizeof(value));
+#else
+    buf[0] = value & 0xff;
+    buf[1] = (value >> 8) & 0xff;
+#endif
+}
+
 inline void EncodeFixed32(char* buf, uint32_t value) {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
   memcpy(buf, &value, sizeof(value));
