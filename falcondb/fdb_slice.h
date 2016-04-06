@@ -22,7 +22,6 @@ void fdb_slice_uint32_push_front(fdb_slice_t* slice, uint32_t val);
 
 void fdb_slice_uint64_push_front(fdb_slice_t* slice, uint64_t val);
 
-void fdb_slice_double_push_front(fdb_slice_t* slice, double val);
 
 //push back
 void fdb_slice_string_push_back(fdb_slice_t* slice, const char* str, size_t len);
@@ -32,9 +31,6 @@ void fdb_slice_uint8_push_back(fdb_slice_t* slice, uint8_t val);
 void fdb_slice_uint32_push_back(fdb_slice_t* slice, uint32_t val);
 
 void fdb_slice_uint64_push_back(fdb_slice_t* slice, uint64_t val);
-
-void fdb_slice_double_push_back(fdb_slice_t* slice, double val);
-
 
 
 const char* fdb_slice_data(const fdb_slice_t* slice);

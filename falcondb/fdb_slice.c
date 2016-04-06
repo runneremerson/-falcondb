@@ -14,8 +14,6 @@ struct fdb_slice_t {
 };
 
 
-
-
 fdb_slice_t* fdb_slice_create(const char* data, size_t len){
   fdb_slice_t *slice = (fdb_slice_t*)fdb_malloc(sizeof(fdb_slice_t));
   if(len==0 || data == NULL){
@@ -60,6 +58,23 @@ void fdb_slice_string_push_back(fdb_slice_t* slice, const char* str, size_t len)
   }
 }
 
+void fdb_slice_uint8_push_back(fdb_slice_t* slice, uint8_t val){
+    char buf[sizeof(uint8_t)] = {0};
+    rocksdb_encode_fixed8(buf, val);
+    fdb_slice_string_push_back(slice, buf, sizeof(uint8_t));
+}
+
+void fdb_slice_uint32_push_back(fdb_slice_t* slice, uint32_t val){
+    char buf[sizeof(uint32_t)] = {0};
+    rocksdb_encode_fixed32(buf, val);
+    fdb_slice_string_push_back(slice, buf, sizeof(uint32_t));
+}
+
+void fdb_slice_uint64_push_back(fdb_slice_t* slice, uint64_t val){
+    char buf[sizeof(uint64_t)] = {0};
+    rocksdb_encode_fixed64(buf, val);
+    fdb_slice_string_push_back(slice, buf, sizeof(uint64_t)); 
+}
 
 void fdb_slice_string_push_front(fdb_slice_t* slice, const char* str, size_t len){
   if(len > 0){
@@ -75,7 +90,7 @@ void fdb_slice_string_push_front(fdb_slice_t* slice, const char* str, size_t len
 }
 
 void fdb_slice_uint8_push_front(fdb_slice_t* slice, uint8_t val){
-    char buf[sizeof(uint8_t)] = {0}; 
+    char buf[sizeof(uint8_t)] = {0};
     rocksdb_encode_fixed8(buf, val);
     fdb_slice_string_push_front(slice, buf, sizeof(uint8_t)); 
 }
@@ -90,10 +105,6 @@ void fdb_slice_uint64_push_front(fdb_slice_t* slice, uint64_t val){
     char buf[sizeof(uint64_t)] = {0};
     rocksdb_encode_fixed64(buf, val);
     fdb_slice_string_push_front(slice, buf, sizeof(uint64_t)); 
-}
-
-void fdb_slice_double_push_front(fdb_slice_t* slice, double val){
-    
 }
 
 const char* fdb_slice_data(const fdb_slice_t* slice){

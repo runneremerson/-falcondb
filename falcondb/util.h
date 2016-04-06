@@ -21,5 +21,9 @@ uint64_t big_endian_uint64(uint64_t v);
 
 double big_endian_double(double v);
 
+uint64_t double_to_lex(double v);
+
+double lex_to_double(uint64_t v);
+
 #endif //FDB_UTIL_H
 

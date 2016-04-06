@@ -87,8 +87,8 @@ fi
 
 cd "$DIR"
 rm -f falcondb/version.h
-echo "#ifndef FALCONDB_DEPS_H" >> falcondb/version.h
-echo "#define FALCONDB_DEPS_H" >> falcondb/version.h
+echo "#ifndef FALCONDB_VERSION_H" >> falcondb/version.h
+echo "#define FALCONDB_VERSION_H" >> falcondb/version.h
 echo "#ifndef FALCONDB_VERSION" >> falcondb/version.h
 echo "#define FALCONDB_VERSION \"`cat version`\"" >> falcondb/version.h
 echo "#endif" >> falcondb/version.h
