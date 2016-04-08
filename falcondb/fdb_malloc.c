@@ -59,9 +59,16 @@ void fdb_free(void *ptr) {
 }
 
 char *fdb_strdup(const char *s) {
-    size_t l = strlen(s)+1;
-    char *p = fdb_malloc(l);
+    size_t len = strlen(s);
+    char *p = fdb_malloc(len+1);
+    memcpy(p,s,len);
+    p[len] = '\0';
+    return p;
+}
 
-    memcpy(p,s,l);
+char *fdb_strdup_with_length(const char *s, size_t len) {
+    char *p = fdb_malloc(len+1);
+    memcpy(p,s,len);
+    p[len] = '\0';
     return p;
 }

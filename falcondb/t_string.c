@@ -124,6 +124,49 @@ end:
 }
 
 
+int string_setxx(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, const fdb_slice_t* value){  
+  int retval = FDB_OK;
+  if(fdb_slice_length(key) == 0){
+    fprintf(stderr, "%s empty key!\n", __func__);
+    retval = FDB_ERR;
+    goto end;
+  }
+  //get
+  fdb_slice_t *slice_value = NULL;
+  int found = string_get(context, slot, key, &slice_value);
+  if(found != FDB_OK){
+    retval = FDB_OK_NOT_EXIST;
+    goto end;
+  }
+  //set
+  char *errptr = NULL;
+  rocksdb_writeoptions_t* writeoptions = rocksdb_writeoptions_create();
+  fdb_slice_t *slice_key = NULL;
+  encode_kv_key(fdb_slice_data(key), fdb_slice_length(key), &slice_key);
+  rocksdb_put_cf(context->db_, 
+                 writeoptions, 
+                 slot->handle_,
+                 fdb_slice_data(slice_key), 
+                 fdb_slice_length(slice_key), 
+                 fdb_slice_data(value), 
+                 fdb_slice_length(value), 
+                 &errptr);
+  rocksdb_writeoptions_destroy(writeoptions);
+  fdb_slice_destroy(slice_key);
+  if(errptr != NULL){
+    fprintf(stderr, "%s rocksdb_put_cf failed %s.\n", __func__, errptr);
+    rocksdb_free(errptr);
+    retval = FDB_ERR;
+    goto end;
+  }
+  retval = FDB_OK; 
+
+end:
+  fdb_slice_destroy(slice_value);
+  return retval;
+}
+
+
 int string_get(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, fdb_slice_t** pvalue){
   char *val, *errptr = NULL;
   size_t vallen = 0;
@@ -141,11 +184,89 @@ int string_get(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key,
     goto end;
   }
   if(val != NULL){
+    *pvalue = fdb_slice_create(val, vallen);
+    retval = FDB_OK;
+  }else{
+    retval = FDB_OK_NOT_EXIST;
   }
 
 end:
   if(val != NULL){
     rocksdb_free(val);
   }
+  return retval;
+}
+
+int string_del(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){  
+  int retval = 0;
+  if(fdb_slice_length(key) == 0){
+    fprintf(stderr, "%s empty key!\n", __func__);
+    retval = FDB_ERR;
+    goto end;
+  }
+  char *errptr = NULL;
+  rocksdb_writeoptions_t* writeoptions = rocksdb_writeoptions_create();
+  fdb_slice_t *slice_key = NULL;
+  encode_kv_key(fdb_slice_data(key), fdb_slice_length(key), &slice_key);
+  rocksdb_delete_cf(context->db_, 
+                    writeoptions, 
+                    slot->handle_,
+                    fdb_slice_data(slice_key), 
+                    fdb_slice_length(slice_key), 
+                    &errptr);
+  rocksdb_writeoptions_destroy(writeoptions);
+  fdb_slice_destroy(slice_key);
+  if(errptr != NULL){
+    fprintf(stderr, "%s rocksdb_delete_cf fail %s.\n", errptr, __func__);
+    rocksdb_free(errptr);
+    retval = FDB_ERR;
+    goto end;
+  }
+  retval = FDB_OK;
+
+end:
+  return retval;
+}
+
+int string_incr(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, int64_t init, int64_t by, int64_t* val){  
+  int retval = 0;
+  fdb_slice_t *slice_value = NULL;
+  int found = string_get(context, slot, key, &slice_value);
+  if(found == FDB_OK){
+    *val = rocksdb_decode_fixed64(fdb_slice_data(slice_value));
+  }else if(found == FDB_OK_NOT_EXIST){
+    *val = init;
+  }else{
+    retval = found;
+    goto end;
+  }
+  *val += by; 
+  char buf[sizeof(int64_t)] = {0};
+  rocksdb_encode_fixed64(buf, *val);
+
+  char *errptr = NULL;
+  rocksdb_writeoptions_t* writeoptions = rocksdb_writeoptions_create();
+  fdb_slice_t *slice_key = NULL;
+  encode_kv_key(fdb_slice_data(key), fdb_slice_length(key), &slice_key);
+  rocksdb_put_cf(context->db_, 
+                writeoptions, 
+                slot->handle_,
+                fdb_slice_data(slice_key), 
+                fdb_slice_length(slice_key), 
+                buf,
+                sizeof(buf),
+                &errptr);
+  rocksdb_writeoptions_destroy(writeoptions);
+  fdb_slice_destroy(slice_key);
+  if(errptr != NULL){
+    fprintf(stderr, "%s rocksdb_put_cf failed %s.\n", __func__, errptr);
+    rocksdb_free(errptr);
+    retval = FDB_ERR;
+    goto end;
+  }
+  retval = FDB_OK;
+
+end:
+  fdb_slice_destroy(slice_value);
   return retval;
 }
