@@ -64,6 +64,12 @@ void fdb_slice_uint8_push_back(fdb_slice_t* slice, uint8_t val){
     fdb_slice_string_push_back(slice, buf, sizeof(uint8_t));
 }
 
+void fdb_slice_uint16_push_back(fdb_slice_t* slice, uint16_t val){
+    char buf[sizeof(uint16_t)] = {0};
+    rocksdb_encode_fixed16(buf, val);
+    fdb_slice_string_push_back(slice, buf, sizeof(uint16_t));
+}
+
 void fdb_slice_uint32_push_back(fdb_slice_t* slice, uint32_t val){
     char buf[sizeof(uint32_t)] = {0};
     rocksdb_encode_fixed32(buf, val);
@@ -93,6 +99,12 @@ void fdb_slice_uint8_push_front(fdb_slice_t* slice, uint8_t val){
     char buf[sizeof(uint8_t)] = {0};
     rocksdb_encode_fixed8(buf, val);
     fdb_slice_string_push_front(slice, buf, sizeof(uint8_t)); 
+}
+
+void fdb_slice_uint16_push_front(fdb_slice_t* slice, uint16_t val){
+    char buf[sizeof(uint16_t)] = {0};
+    rocksdb_encode_fixed16(buf, val);
+    fdb_slice_string_push_front(slice, buf, sizeof(uint16_t)); 
 }
 
 void fdb_slice_uint32_push_front(fdb_slice_t* slice, uint32_t val){
