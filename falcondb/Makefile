@@ -1,6 +1,6 @@
 include ../build_config.mk
 
-FDB_OBJS = util.o fdb_bytes.o fdb_slice.o fdb_context.o fdb_malloc.o t_string.o fdb_session.o
+FDB_OBJS = util.o fdb_bytes.o fdb_slice.o fdb_object.o fdb_context.o fdb_malloc.o t_string.o fdb_session.o
 
 
 
@@ -15,6 +15,8 @@ fdb_bytes.o: fdb_bytes.h fdb_bytes.c
 	${CC} ${CFLAGS} -c fdb_bytes.c
 fdb_slice.o: fdb_slice.h fdb_slice.c
 	${CC} ${CFLAGS} -c fdb_slice.c
+fdb_object.o: fdb_object.h fdb_object.c
+	${CC} ${CFLAGS} -c fdb_object.c
 fdb_context.o: fdb_context.h fdb_context.c
 	${CC} ${CFLAGS} -c fdb_context.c
 fdb_malloc.o: fdb_malloc.h fdb_malloc.c

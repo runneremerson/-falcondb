@@ -9,7 +9,7 @@
 typedef struct  fdb_bytes_t     fdb_bytes_t;
 
 fdb_bytes_t* fdb_bytes_create(const char* data, size_t len);
-void fdb_bytes_destroy(fdb_bytes_t* bytes);
+void fdb_bytes_destroy(void* bytes);
 
 int fdb_bytes_skip(fdb_bytes_t* bytes, size_t n);
 

@@ -29,14 +29,15 @@ fdb_slice_t* fdb_slice_create(const char* data, size_t len){
   return slice;
 }
 
-void fdb_slice_destroy(fdb_slice_t* slice){
+void fdb_slice_destroy(void* slice){
   if(slice!=NULL){
-    fdb_free(slice->data_);
-    fdb_free(slice);
+    fdb_slice_t *sl = (fdb_slice_t*)slice;
+    fdb_free(sl->data_);
+    fdb_free(sl);
   }
 }
 
-static size_t ensure_capacity(size_t len){
+static size_t ensure_slice_capacity(size_t len){
   size_t capacity = len;
   if(capacity>16){
     capacity += (len>>1);
@@ -49,7 +50,7 @@ static size_t ensure_capacity(size_t len){
 void fdb_slice_string_push_back(fdb_slice_t* slice, const char* str, size_t len){
   if(len > 0){
     if(slice->capacity_ < (slice->length_ + len + 1)){
-      slice->capacity_ = ensure_capacity(slice->length_ + len + 1);
+      slice->capacity_ = ensure_slice_capacity(slice->length_ + len + 1);
       slice->data_ = fdb_realloc(slice->data_, slice->capacity_);
     }
     memcpy(slice->data_ + slice->length_, str, len);
@@ -85,7 +86,7 @@ void fdb_slice_uint64_push_back(fdb_slice_t* slice, uint64_t val){
 void fdb_slice_string_push_front(fdb_slice_t* slice, const char* str, size_t len){
   if(len > 0){
     if(slice->capacity_ < (slice->length_ + len + 1)){
-      slice->capacity_ = ensure_capacity(slice->length_ + len + 1);
+      slice->capacity_ = ensure_slice_capacity(slice->length_ + len + 1);
       slice->data_ = fdb_realloc(slice->data_, slice->capacity_);
     }
     memmove(slice->data_ + len, slice->data_, slice->length_);

@@ -17,7 +17,7 @@ fdb_bytes_t* fdb_bytes_create(const char* data, size_t len){
   return bytes;
 }
 
-void fdb_bytes_destroy(fdb_bytes_t* bytes){
+void fdb_bytes_destroy(void* bytes){
   fdb_free(bytes);
 }
 

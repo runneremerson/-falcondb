@@ -38,5 +38,12 @@ int fdb_del(fdb_context_t* context,
             fdb_slot_t* slot,
             fdb_item_t* key);
 
+int fdb_incrby(fdb_context_t* context,
+               fdb_slot_t* slot,
+               fdb_item_t* key,
+               int64_t init,
+               int64_t by,
+               int64_t *result);
+
 #endif //FDB_SESSION_H
 
