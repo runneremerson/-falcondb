@@ -14,12 +14,6 @@
 #define FDB_DATA_TYPE_SSIZE                  "E"
 
 
-#define FDB_LIST_NODE_TYPE_NONE                 0
-#define FDB_LIST_NODE_TYPE_BASE                 1
-#define FDB_LIST_NODE_TYPE_SLICE                2
-
-
-
 
 #define FDB_OK_HYPERLOGLOG_NOT_EXIST            8
 #define FDB_OK_HYPERLOGLOG_EXIST                7

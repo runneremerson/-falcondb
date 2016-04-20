@@ -71,7 +71,7 @@ fdb_array_t* fdb_array_create(size_t len);
 void fdb_array_destroy(fdb_array_t* array);
 
 size_t fdb_array_push_back(fdb_array_t* array, fdb_val_node_t* node);
-size_t fdb_array_pop_back(fdb_array_t* array, fdb_val_node_t* node);
+size_t fdb_array_pop_back(fdb_array_t* array);
 
 fdb_val_node_t* fdb_array_back(fdb_array_t* array);
 fdb_val_node_t* fdb_array_front(fdb_array_t* array);

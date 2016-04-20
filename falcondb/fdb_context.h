@@ -14,6 +14,7 @@ struct fdb_context_t{
 
 struct fdb_slot_t{
     rocksdb_column_family_handle_t*      handle_; 
+    rocksdb_cache_t*                     keys_cache_;
     rocksdb_writebatch_t*                batch_;
     rocksdb_mutex_t*                     mutex_;
 };

@@ -88,6 +88,7 @@ fdb_slot_t** fdb_slots_create(int num_slots){
     for(int i=0; i<num_slots; ++i){
         slots[i] = (fdb_slot_t*)fdb_malloc(sizeof(fdb_slot_t));
         slots[i]->handle_ = NULL;
+        slots[i]->keys_cache_ = rocksdb_cache_create_lru();
         slots[i]->batch_ = rocksdb_writebatch_create();
         slots[i]->mutex_ = rocksdb_mutex_create();
     }
@@ -99,6 +100,7 @@ void fdb_slots_destroy(int num_slots, fdb_slot_t** slots){
         if(slots[i]->handle_ !=NULL){
             rocksdb_column_family_handle_destroy(slots[i]->handle_);
         }
+        rocksdb_cache_destroy(slots[i]->keys_cache_);
         rocksdb_writebatch_destroy(slots[i]->batch_);
         rocksdb_mutex_destroy(slots[i]->mutex_); 
         fdb_free(slots[i]);

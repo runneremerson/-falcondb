@@ -156,7 +156,7 @@ fdb_array_t* fdb_array_create(size_t cap){
     fdb_array_t *array = fdb_malloc(sizeof(fdb_array_t));
     array->length_ = 0;
     array->capacity_ = cap;
-    array->array_ = fdb_malloc(array->capacity_ * sizeof(fdb_val_node_t*));
+    array->array_ = (fdb_val_node_t**)fdb_malloc(array->capacity_ * sizeof(fdb_val_node_t*));
     return array;
 }
 
@@ -178,12 +178,25 @@ static size_t ensure_array_capacity(size_t len){
 }
 
 size_t fdb_array_push_back(fdb_array_t* array, fdb_val_node_t* node){
-    return 0;
-
+    if(array->capacity_ < (array->length_ + 1)){
+        array->capacity_ = ensure_array_capacity(array->length_ + 1);
+        fdb_val_node_t **_array = (fdb_val_node_t**)fdb_malloc(array->capacity_ * sizeof(fdb_val_node_t*));
+        for(int i=0; i<array->length_; ++i){
+            _array[i] = array->array_[i];
+        }
+        fdb_free(array->array_);
+        array->array_ = _array;
+    }
+    array->array_[array->length_] = node;
+    array->length_ += 1;
+    return array->length_;
 }
 
-size_t fdb_array_pop_back(fdb_array_t* array, fdb_val_node_t* node){
-   return 0; 
+size_t fdb_array_pop_back(fdb_array_t* array){
+    if(array->length_>0){
+        array->length_ -= 1;
+    }
+    return array->length_;
 }
 
 fdb_val_node_t* fdb_array_at(fdb_array_t* array, size_t index){
@@ -203,5 +216,4 @@ fdb_val_node_t* fdb_array_front(fdb_array_t* array){
     if(array->length_==0) return NULL;
     return array->array_[0];
 }
-
 
