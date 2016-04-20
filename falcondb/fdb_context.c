@@ -88,7 +88,7 @@ fdb_slot_t** fdb_slots_create(int num_slots){
     for(int i=0; i<num_slots; ++i){
         slots[i] = (fdb_slot_t*)fdb_malloc(sizeof(fdb_slot_t));
         slots[i]->handle_ = NULL;
-        slots[i]->keys_cache_ = rocksdb_cache_create_lru();
+        slots[i]->keys_cache_ = rocksdb_cache_create_lru(1024*1024*100);
         slots[i]->batch_ = rocksdb_writebatch_create();
         slots[i]->mutex_ = rocksdb_mutex_create();
     }
