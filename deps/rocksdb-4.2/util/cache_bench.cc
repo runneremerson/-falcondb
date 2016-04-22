@@ -50,7 +50,7 @@ namespace rocksdb {
 
 class CacheBench;
 namespace {
-void deleter(const Slice& key, void* value) {
+void deleter(const char* key, size_t keylen, void* value) {
     delete reinterpret_cast<char *>(value);
 }
 

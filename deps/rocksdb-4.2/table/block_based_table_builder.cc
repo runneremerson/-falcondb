@@ -679,7 +679,7 @@ Status BlockBasedTableBuilder::status() const {
   return rep_->status;
 }
 
-static void DeleteCachedBlock(const Slice& key, void* value) {
+static void DeleteCachedBlock(const char* key, size_t keylen, void* value) {
   Block* block = reinterpret_cast<Block*>(value);
   delete block;
 }

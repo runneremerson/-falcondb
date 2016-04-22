@@ -30,7 +30,7 @@ namespace rocksdb {
 namespace {
 
 template <class T>
-static void DeleteEntry(const Slice& key, void* value) {
+static void DeleteEntry(const char*key, size_t keylen, void* value) {
   T* typed_value = reinterpret_cast<T*>(value);
   delete typed_value;
 }

@@ -13,6 +13,10 @@ void fdb_bytes_destroy(void* bytes);
 
 int fdb_bytes_skip(fdb_bytes_t* bytes, size_t n);
 
+int fdb_bytes_read_int16(fdb_bytes_t* bytes, int16_t* val);
+
+int fdb_bytes_read_uint16(fdb_bytes_t* bytes, uint16_t* val);
+
 int fdb_bytes_read_int64(fdb_bytes_t* bytes, int64_t* val);
 
 int fdb_bytes_read_uint64(fdb_bytes_t* bytes, uint64_t* val);

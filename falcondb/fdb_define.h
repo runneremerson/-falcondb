@@ -3,15 +3,20 @@
 
 
 
-#define FDB_DATA_TYPE_STRING                 "t"
-#define FDB_DATA_TYPE_TLL                    "l"
-#define FDB_DATA_TYPE_HASH                   "h" 
-#define FDB_DATA_TYPE_HSIZE                  "H"
-#define FDB_DATA_TYPE_ZSET                   "s"
-#define FDB_DATA_TYPE_ZSCORE                 "z"
-#define FDB_DATA_TYPE_ZSIZE                  "Z"
-#define FDB_DATA_TYPE_SET                    "e"
-#define FDB_DATA_TYPE_SSIZE                  "E"
+//main key
+#define FDB_DATA_TYPE_STRING                 't'
+#define FDB_DATA_TYPE_HASH                   'h'
+#define FDB_DATA_TYPE_HSIZE                  'H'
+#define FDB_DATA_TYPE_ZSET                   's'
+#define FDB_DATA_TYPE_ZSCORE                 'z'
+#define FDB_DATA_TYPE_ZSIZE                  'Z'
+#define FDB_DATA_TYPE_SET                    'e'
+#define FDB_DATA_TYPE_SSIZE                  'E'
+
+//special key
+#define FDB_DATA_TYPE_TTL                    'l'
+#define FDB_META_TYPE_KEYS                   'k'
+#define FDB_META_TYPE_DELS                   'd'
 
 
 

@@ -107,6 +107,7 @@ struct rocksdb_writablefile_t    { WritableFile*     rep; };
 struct rocksdb_filelock_t        { FileLock*         rep; };
 struct rocksdb_logger_t          { shared_ptr<Logger>  rep; };
 struct rocksdb_cache_t           { shared_ptr<Cache>   rep; };
+struct rocksdb_cache_handle_t    { Cache::Handle* rep; };
 struct rocksdb_livefiles_t       { std::vector<LiveFileMetaData> rep; };
 struct rocksdb_column_family_handle_t  { ColumnFamilyHandle* rep; };
 struct rocksdb_mutex_t           { Mutex*            rep; };
@@ -2160,6 +2161,48 @@ rocksdb_cache_t* rocksdb_cache_create_lru(size_t capacity) {
 void rocksdb_cache_destroy(rocksdb_cache_t* cache) {
   delete cache;
 }
+
+rocksdb_cache_handle_t* rocksdb_cache_insert(
+    rocksdb_cache_t* cache, const char* key, size_t keylen,
+    void* val, size_t charge, void(*deleter)(const char* key, size_t keylen, void* value)){
+    
+    Cache::Handle* handle = cache->rep->Insert(Slice(key, keylen), val, charge, deleter);
+    if(handle == nullptr) return nullptr;
+    rocksdb_cache_handle_t* h = new rocksdb_cache_handle_t;
+    h->rep = handle;
+    return h;
+}
+
+rocksdb_cache_handle_t* rocksdb_cache_lookup(
+    rocksdb_cache_t* cache, const char* key, size_t keylen){
+
+    Cache::Handle* handle = cache->rep->Lookup(Slice(key, keylen));
+    if(handle == nullptr) return nullptr;
+    rocksdb_cache_handle_t* h = new rocksdb_cache_handle_t;
+    h->rep = handle;
+    return h;
+}
+
+void rocksdb_cache_release(
+    rocksdb_cache_t* cache, rocksdb_cache_handle_t* handle){
+
+    cache->rep->Release(handle->rep);
+    delete handle;
+}
+
+void* rocksdb_cache_value(
+    rocksdb_cache_t* cache, rocksdb_cache_handle_t* handle){
+
+    return cache->rep->Value(handle->rep);   
+}
+
+void rocksdb_cache_erase(
+    rocksdb_cache_t* cache, const char* key, size_t keylen){
+
+    cache->rep->Erase(Slice(key, keylen));
+}
+    
+
 
 rocksdb_env_t* rocksdb_create_default_env() {
   rocksdb_env_t* result = new rocksdb_env_t;

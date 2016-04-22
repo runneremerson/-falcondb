@@ -49,7 +49,7 @@ namespace {
 
 struct LRUHandle {
   void* value;
-  void (*deleter)(const Slice&, void* value);
+  void (*deleter)(const char* key, size_t keylen, void* value);
   LRUHandle* next_hash;
   LRUHandle* next;
   LRUHandle* prev;
@@ -73,7 +73,7 @@ struct LRUHandle {
 
   void Free() {
     assert((refs == 1 && in_cache) || (refs == 0 && !in_cache));
-    (*deleter)(key(), value);
+    (*deleter)(key_data, key_length, value);
     free(this);
   }
 };
@@ -199,7 +199,7 @@ class LRUCache {
   // Like Cache methods, but with an extra "hash" parameter.
   Cache::Handle* Insert(const Slice& key, uint32_t hash,
                         void* value, size_t charge,
-                        void (*deleter)(const Slice& key, void* value));
+                        void (*deleter)(const char* key, size_t keylen, void* value));
   Cache::Handle* Lookup(const Slice& key, uint32_t hash);
   void Release(Cache::Handle* handle);
   void Erase(const Slice& key, uint32_t hash);
@@ -385,7 +385,7 @@ void LRUCache::Release(Cache::Handle* handle) {
 
 Cache::Handle* LRUCache::Insert(
     const Slice& key, uint32_t hash, void* value, size_t charge,
-    void (*deleter)(const Slice& key, void* value)) {
+    void (*deleter)(const char* key, size_t keylen, void* value)) {
 
   // Allocate the memory here outside of the mutex
   // If the cache is full, we'll have to release it
@@ -505,7 +505,7 @@ class ShardedLRUCache : public Cache {
     capacity_ = capacity;
   }
   virtual Handle* Insert(const Slice& key, void* value, size_t charge,
-                         void (*deleter)(const Slice& key,
+                         void (*deleter)(const char* key, size_t keylen,
                                          void* value)) override {
     const uint32_t hash = HashSlice(key);
     return shards_[Shard(hash)].Insert(key, hash, value, charge, deleter);

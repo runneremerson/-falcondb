@@ -30,6 +30,27 @@ int fdb_bytes_skip(fdb_bytes_t* bytes, size_t n){
   return n;
 }
 
+int fdb_bytes_read_int16(fdb_bytes_t* bytes, int16_t* val){
+  if(bytes->length_ < sizeof(int16_t)){
+    return -1;
+  }
+  *val = rocksdb_decode_fixed16(bytes->data_);
+  bytes->data_ += sizeof(int16_t);
+  bytes->length_ -= sizeof(int16_t);
+  return sizeof(int16_t);
+}
+
+
+int fdb_bytes_read_uint16(fdb_bytes_t* bytes, uint16_t* val){
+  if(bytes->length_ < sizeof(uint16_t)){
+    return -1;
+  }
+  *val = rocksdb_decode_fixed16(bytes->data_);
+  bytes->data_ += sizeof(uint16_t);
+  bytes->length_ -= sizeof(uint16_t);
+  return sizeof(uint16_t);
+}
+
 int fdb_bytes_read_int64(fdb_bytes_t* bytes, int64_t* val){
   if(bytes->length_ < sizeof(int64_t)){
     return -1;

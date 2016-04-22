@@ -75,6 +75,7 @@ typedef struct rocksdb_backup_engine_t   rocksdb_backup_engine_t;
 typedef struct rocksdb_backup_engine_info_t   rocksdb_backup_engine_info_t;
 typedef struct rocksdb_restore_options_t rocksdb_restore_options_t;
 typedef struct rocksdb_cache_t           rocksdb_cache_t;
+typedef struct rocksdb_cache_handle_t    rocksdb_cache_handle_t;
 typedef struct rocksdb_compactionfilter_t rocksdb_compactionfilter_t;
 typedef struct rocksdb_compactionfiltercontext_t
     rocksdb_compactionfiltercontext_t;
@@ -842,6 +843,22 @@ extern ROCKSDB_LIBRARY_API void rocksdb_flushoptions_set_wait(
 extern ROCKSDB_LIBRARY_API rocksdb_cache_t* rocksdb_cache_create_lru(
     size_t capacity);
 extern ROCKSDB_LIBRARY_API void rocksdb_cache_destroy(rocksdb_cache_t* cache);
+
+extern ROCKSDB_LIBRARY_API rocksdb_cache_handle_t* rocksdb_cache_insert(
+    rocksdb_cache_t* cache, const char* key, size_t keylen,
+    void* val, size_t charge, void(*deleter)(const char*key, size_t keylen, void* value));
+
+extern ROCKSDB_LIBRARY_API rocksdb_cache_handle_t* rocksdb_cache_lookup(
+    rocksdb_cache_t* cache, const char* key, size_t keylen);
+
+extern ROCKSDB_LIBRARY_API void rocksdb_cache_release(
+    rocksdb_cache_t* cache, rocksdb_cache_handle_t* handle);
+
+extern ROCKSDB_LIBRARY_API void* rocksdb_cache_value(
+    rocksdb_cache_t* cache, rocksdb_cache_handle_t* handle);
+
+extern ROCKSDB_LIBRARY_API void rocksdb_cache_erase(
+    rocksdb_cache_t* cache, const char* key, size_t keylen);
 
 /* Env */
 

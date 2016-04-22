@@ -10,6 +10,8 @@ int main(int argc, char* argv[]){
     fdb_slice_t *slice1 = fdb_slice_create(falcondb, strlen(falcondb));
     fdb_slice_uint64_push_back(slice1, -1222);
     fdb_slice_uint64_push_back(slice1, 11123);
+    fdb_slice_uint16_push_back(slice1, -266);
+    fdb_slice_uint16_push_back(slice1, 2616);
 
     const char* falcondb_slice1_uint8 = "falcondb_slice1_uint8";
     fdb_slice_uint8_push_back(slice1, strlen(falcondb_slice1_uint8));
@@ -32,6 +34,14 @@ int main(int argc, char* argv[]){
     uint64_t val_uint64 = 0;
     assert(fdb_bytes_read_uint64(bytes1, &val_uint64)==sizeof(uint64_t));
     assert(val_uint64 == 11123);
+
+    int16_t val_int16 = 0;
+    assert(fdb_bytes_read_int16(bytes1, &val_int16)==sizeof(int16_t));
+    assert(val_int16 == -266);
+
+    uint16_t val_uint16 = 0;
+    assert(fdb_bytes_read_uint16(bytes1, &val_uint16)==sizeof(uint16_t));
+    assert(val_uint16 == 2616);
 
     fdb_slice_t *slice2 = NULL;
     assert(fdb_bytes_read_slice_len_uint8(bytes1, &slice2)==(strlen(falcondb_slice1_uint8)+sizeof(uint8_t)));

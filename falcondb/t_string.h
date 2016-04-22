@@ -6,9 +6,9 @@
 #include "fdb_slice.h"
 
 
-void encode_kv_key(const char* key, size_t keylen, fdb_slice_t** pslice);
+void encode_string_key(const char* key, size_t keylen, fdb_slice_t** pslice);
 
-int decode_kv_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pslice);
+int decode_string_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pslice);
 
 
 //string

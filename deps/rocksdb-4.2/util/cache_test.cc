@@ -38,8 +38,8 @@ class CacheTest : public testing::Test {
  public:
   static CacheTest* current_;
 
-  static void Deleter(const Slice& key, void* v) {
-    current_->deleted_keys_.push_back(DecodeKey(key));
+  static void Deleter(const char* key, size_t keylen, void* v) {
+    current_->deleted_keys_.push_back(DecodeKey(Slice(key, keylen)));
     current_->deleted_values_.push_back(DecodeValue(v));
   }
 
@@ -109,7 +109,7 @@ class CacheTest : public testing::Test {
 CacheTest* CacheTest::current_;
 
 namespace {
-void dumbDeleter(const Slice& key, void* value) { }
+void dumbDeleter(const char* key, size_t keylen, void* value) { }
 }  // namespace
 
 TEST_F(CacheTest, UsageTest) {
@@ -393,7 +393,7 @@ class Value {
 };
 
 namespace {
-void deleter(const Slice& key, void* value) {
+void deleter(const char* key, size_t keylen, void* value) {
   delete static_cast<Value *>(value);
 }
 }  // namespace

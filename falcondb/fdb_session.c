@@ -5,6 +5,7 @@
 #include "fdb_define.h"
 
 #include "t_string.h"
+#include "t_keys.h"
 
 #include <rocksdb/c.h>
 #include <string.h>
