@@ -18,6 +18,9 @@ int keys_enc(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t
 //deleting the key and the related data struct, such as zset
 int keys_del(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key);
 
+//reming the entry
+int keys_rem(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key);
+
 //getting type
 int keys_get(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, uint8_t* type);
 

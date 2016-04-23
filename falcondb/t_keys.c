@@ -156,36 +156,36 @@ end:
     return retval;
 }
 
-//static int del_keys_val(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){
-//    int retval = 0;
-//    char *errptr = NULL;
-//
-//    //deling from lru cache
-//    rocksdb_cache_erase(slot->keys_cache_, fdb_slice_data(key), fdb_slice_length(key));
-//  
-//    //deling from rocksdb
-//    fdb_slice_t *slice_key = NULL;
-//    encode_meta_key(fdb_slice_data(key), fdb_slice_length(key), FDB_META_TYPE_KEYS, &slice_key);
-//    rocksdb_writeoptions_t* writeoptions = rocksdb_writeoptions_create();
-//    rocksdb_delete_cf(context->db_, 
-//                      writeoptions, 
-//                      slot->handle_, 
-//                      fdb_slice_data(slice_key), 
-//                      fdb_slice_length(slice_key), 
-//                      &errptr);
-//    rocksdb_writeoptions_destroy(writeoptions);
-//    fdb_slice_destroy(slice_key);
-//    if(errptr != NULL){
-//        fprintf(stderr, "%s rocksdb_delete_cf fail %s.\n", __func__, errptr);
-//        rocksdb_free(errptr);
-//        retval = -1;
-//        goto end;
-//    }
-//    retval = 1;
-//
-//end:
-//  return retval;
-//}
+static int rem_keys_val(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){
+    int retval = 0;
+    char *errptr = NULL;
+
+    //deling from lru cache
+    rocksdb_cache_erase(slot->keys_cache_, fdb_slice_data(key), fdb_slice_length(key));
+  
+    //deling from rocksdb
+    fdb_slice_t *slice_key = NULL;
+    encode_meta_key(fdb_slice_data(key), fdb_slice_length(key), FDB_META_TYPE_KEYS, &slice_key);
+    rocksdb_writeoptions_t* writeoptions = rocksdb_writeoptions_create();
+    rocksdb_delete_cf(context->db_, 
+                      writeoptions, 
+                      slot->handle_, 
+                      fdb_slice_data(slice_key), 
+                      fdb_slice_length(slice_key), 
+                      &errptr);
+    rocksdb_writeoptions_destroy(writeoptions);
+    fdb_slice_destroy(slice_key);
+    if(errptr != NULL){
+        fprintf(stderr, "%s rocksdb_delete_cf fail %s.\n", __func__, errptr);
+        rocksdb_free(errptr);
+        retval = -1;
+        goto end;
+    }
+    retval = 1;
+
+end:
+  return retval;
+}
 
 
 int keys_enc(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t type){
@@ -230,6 +230,18 @@ int keys_del(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){
 
 end:
     return retval;
+}
+
+int keys_rem(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){
+    int retval = 0;
+
+    int ret = rem_keys_val(context, slot, key);
+    if(ret==1){
+        retval = FDB_OK;
+    }
+    retval = FDB_ERR; 
+
+    return retval;  
 }
 
 int keys_get(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, uint8_t* type){
