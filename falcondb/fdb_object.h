@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+
+
 struct fdb_val_t {
     union val_t {
         double      dval_;
@@ -16,6 +18,7 @@ struct fdb_val_node_t {
     struct fdb_val_node_t* next_;
     struct fdb_val_node_t* prev_;
     struct fdb_val_t value_;
+    int retval_;
 };
 
 struct fdb_list_t {

@@ -8,34 +8,50 @@
 
 
 struct fdb_slice_t {
-    size_t length_;
+    size_t ref_;
     size_t capacity_;
+    size_t start_;
+    size_t length_;
     char *data_;
 };
 
 
 fdb_slice_t* fdb_slice_create(const char* data, size_t len){
-  fdb_slice_t *slice = (fdb_slice_t*)fdb_malloc(sizeof(fdb_slice_t));
-  if(len==0 || data == NULL){
-    slice->data_ = NULL;
-    slice->length_ = 0;
-  }else{
-    slice->data_ = fdb_malloc(len + 1);
-    memcpy(slice->data_, data, len);
-    slice->data_[len] = '\0';
-    slice->length_ = len;
-  }
-  slice->capacity_ = slice->length_ + 1;
-  return slice;
+    fdb_slice_t *slice = (fdb_slice_t*)fdb_malloc(sizeof(fdb_slice_t));
+    if(len==0 || data == NULL){
+        slice->length_ = 0;
+        slice->capacity_ = 8 + slice->length_ + 1;
+        slice->start_ = 8;
+        slice->data_ = NULL;
+    }else{
+        slice->length_ = len;
+        slice->capacity_ = 8 + slice->length_ + 1;
+        slice->data_ = fdb_malloc(slice->capacity_);
+        slice->start_ = 8;
+        memcpy(slice->data_ + slice->start_, data, len);
+    }
+    
+    slice->data_[slice->start_ + slice->length_] = '\0';
+    slice->ref_ = 1;
+    return slice;
+}
+
+void fdb_slice_incr_ref(fdb_slice_t* slice){
+  slice->ref_ += 1;
 }
 
 void fdb_slice_destroy(void* slice){
   if(slice!=NULL){
     fdb_slice_t *sl = (fdb_slice_t*)slice;
-    fdb_free(sl->data_);
-    fdb_free(sl);
+    sl->ref_ -= 1;
+    if(sl->ref_ == 0){
+      fdb_free(sl->data_);
+      fdb_free(sl);     
+    }
   }
 }
+
+
 
 static size_t ensure_slice_capacity(size_t len){
   size_t capacity = len;
@@ -49,13 +65,13 @@ static size_t ensure_slice_capacity(size_t len){
 
 void fdb_slice_string_push_back(fdb_slice_t* slice, const char* str, size_t len){
   if(len > 0){
-    if(slice->capacity_ < (slice->length_ + len + 1)){
-      slice->capacity_ = ensure_slice_capacity(slice->length_ + len + 1);
+    if(slice->capacity_ < (slice->start_ + slice->length_ + len + 1)){
+      slice->capacity_ = ensure_slice_capacity(slice->start_ + slice->length_ + len + 1);
       slice->data_ = fdb_realloc(slice->data_, slice->capacity_);
     }
-    memcpy(slice->data_ + slice->length_, str, len);
+    memcpy(slice->data_ + slice->start_ + slice->length_, str, len);
     slice->length_ += len;
-    slice->data_[slice->length_] = '\0';
+    slice->data_[slice->start_ + slice->length_] = '\0';
   }
 }
 
@@ -84,16 +100,24 @@ void fdb_slice_uint64_push_back(fdb_slice_t* slice, uint64_t val){
 }
 
 void fdb_slice_string_push_front(fdb_slice_t* slice, const char* str, size_t len){
-  if(len > 0){
-    if(slice->capacity_ < (slice->length_ + len + 1)){
-      slice->capacity_ = ensure_slice_capacity(slice->length_ + len + 1);
-      slice->data_ = fdb_realloc(slice->data_, slice->capacity_);
+    if(len > 0){
+        if(slice->start_ < len){
+            slice->capacity_ = ensure_slice_capacity(8 + slice->length_ + len + 1);
+            size_t old_start = slice->start_;
+            size_t old_length = slice->length_;
+            slice->start_ = 8;
+            slice->data_ = fdb_realloc(slice->data_, slice->capacity_);
+            memmove(slice->data_ + slice->start_ + len, slice->data_ + old_start, old_length);
+            memcpy(slice->data_ + slice->start_, str, len);
+            slice->length_ += len;
+            slice->data_[slice->length_ + slice->start_] = '\0';
+        }
+        else{
+            slice->start_ -= len;
+            slice->length_ += len;
+            memcpy(slice->data_+slice->start_, str, len);
+        }
     }
-    memmove(slice->data_ + len, slice->data_, slice->length_);
-    memcpy(slice->data_, str, len);
-    slice->length_ += len;
-    slice->data_[slice->length_] = '\0';
-  }
 }
 
 void fdb_slice_uint8_push_front(fdb_slice_t* slice, uint8_t val){
@@ -122,7 +146,7 @@ void fdb_slice_uint64_push_front(fdb_slice_t* slice, uint64_t val){
 
 const char* fdb_slice_data(const fdb_slice_t* slice){
   if(slice != NULL){
-    return slice->data_;     
+    return slice->data_ + slice->start_;     
   }
   return NULL;
 }

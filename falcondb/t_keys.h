@@ -5,23 +5,30 @@
 #include "fdb_slice.h"
 
 
-void encode_meta_key(const char* key, size_t keylen, uint8_t type, fdb_slice_t** slice);
+void encode_keys_key(const char* key, size_t keylen, fdb_slice_t** pslice);
 
-int decode_meta_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pslice);
+void encode_dels_key(const char* key, size_t keylen, fdb_slice_t** pslice);
 
+int decode_keys_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pslice);
 
+int decode_dels_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pslice);
 
+//##keys
+int keys_set_string(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, fdb_slice_t* val);
 
-//encoding sequence number into orignal key
+int keys_get_string(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, fdb_slice_t** pval);
+
+//get the main key
 int keys_enc(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t type);
 
-//deleting the key and the related data struct, such as zset
+//del the main key
 int keys_del(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key);
 
-//reming the entry
+//rem the main key
 int keys_rem(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key);
 
-//getting type
+//get the main key type 
 int keys_get(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, uint8_t* type);
+
 
 #endif //FDB_T_KEYS_H

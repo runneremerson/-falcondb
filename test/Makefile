@@ -35,3 +35,4 @@ clean:
 	rm -f test_util
 	rm -f test_slice
 	rm -f test_bytes
+	rm -f test_object

@@ -1,7 +1,7 @@
 include ../build_config.mk
 
 FDB_OBJS = util.o fdb_bytes.o fdb_slice.o fdb_object.o fdb_context.o fdb_malloc.o\
-		   t_keys.o t_string.o fdb_session.o
+		   t_keys.o t_string.o t_hash.o fdb_session.o
 
 
 
@@ -26,6 +26,8 @@ t_keys.o: t_keys.h t_keys.c
 	${CC} ${CFLAGS} -c t_keys.c
 t_string.o: t_string.h t_string.c
 	${CC} ${CFLAGS} -c t_string.c
+t_hash.o: t_hash.h t_hash.c
+	${CC} ${CFLAGS} -c t_hash.c
 fdb_session.o: fdb_session.h fdb_session.c
 	${CC} ${CFLAGS} -c fdb_session.c
 

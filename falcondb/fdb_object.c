@@ -9,6 +9,7 @@ fdb_val_node_t* fdb_val_node_create(){
     if(node == NULL ){
         return NULL;
     }
+    node->retval_ = 0;
     node->next_ = NULL;
     node->prev_ = NULL;
     return node;

@@ -3,7 +3,7 @@
 
 
 
-//main key
+//main key type
 #define FDB_DATA_TYPE_STRING                 't'
 #define FDB_DATA_TYPE_HASH                   'h'
 #define FDB_DATA_TYPE_HSIZE                  'H'
@@ -12,11 +12,16 @@
 #define FDB_DATA_TYPE_ZSIZE                  'Z'
 #define FDB_DATA_TYPE_SET                    'e'
 #define FDB_DATA_TYPE_SSIZE                  'E'
-
-//special key
 #define FDB_DATA_TYPE_TTL                    'l'
-#define FDB_META_TYPE_KEYS                   'k'
-#define FDB_META_TYPE_DELS                   'd'
+#define FDB_DATA_TYPE_KEYS                   'k'
+#define FDB_DATA_TYPE_DELS                   'd'
+
+//main key stat
+#define FDB_KEY_STAT_NORMAL                   0
+#define FDB_KEY_STAT_PENDING                  1
+
+//main sequence number start from
+#define FDB_KEY_INIT_SEQ                      0x0000FF01
 
 
 

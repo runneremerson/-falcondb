@@ -120,10 +120,6 @@ int fdb_del(fdb_context_t* context,
             fdb_slot_t* slot,
             fdb_item_t* key){
     int retval = 0;
-    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
-    retval = string_del(context, slot, slice_key);
-
-    fdb_slice_destroy(slice_key);
     return retval;
 }
 

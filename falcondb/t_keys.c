@@ -13,64 +13,129 @@
 #include <assert.h>
 
 
-void encode_meta_key(const char* key, size_t keylen, uint8_t type, fdb_slice_t** pslice){
-  fdb_slice_t* slice = fdb_slice_create(key, keylen);
-  fdb_slice_uint8_push_front(slice, type);
-  *pslice =  slice;
+void encode_keys_key(const char* key, size_t keylen, fdb_slice_t** pslice){
+    fdb_slice_t* slice = fdb_slice_create(key, keylen);
+    fdb_slice_uint8_push_front(slice, FDB_DATA_TYPE_KEYS);
+    *pslice =  slice;
 }
 
-int decode_meta_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pslice){
-  int retval = 0;
-  fdb_slice_t *slice_key = NULL;
-  fdb_bytes_t* bytes = fdb_bytes_create(fdbkey, fdbkeylen);
+void encode_dels_key(const char* key, size_t keylen, fdb_slice_t** pslice){
+    fdb_slice_t* slice = fdb_slice_create(key, keylen);
+    fdb_slice_uint8_push_front(slice, FDB_DATA_TYPE_DELS);
+    *pslice =  slice;
+}
 
-  uint8_t type = rocksdb_decode_fixed8(fdbkey);
-  if(type!=FDB_META_TYPE_KEYS){
-    goto err;
-  }
-  if(fdb_bytes_skip(bytes, sizeof(uint8_t)) == -1 ){
-    goto err;
-  }
-  if(fdb_bytes_read_slice_len_left(bytes, &slice_key) == -1){
-    goto err;
-  }
-  *pslice = slice_key;
-  retval = 0;
-  goto end;
+int decode_keys_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pslice){
+    int retval = 0;
+    fdb_slice_t *slice_key = NULL;
+    fdb_bytes_t* bytes = fdb_bytes_create(fdbkey, fdbkeylen);
+
+    uint8_t type = rocksdb_decode_fixed8(fdbkey);
+    if(type!=FDB_DATA_TYPE_KEYS){
+        goto err;
+    }
+    if(fdb_bytes_skip(bytes, sizeof(uint8_t)) == -1 ){
+        goto err;
+    }
+    if(fdb_bytes_read_slice_len_left(bytes, &slice_key) == -1){
+        goto err;
+    }
+    *pslice = slice_key;
+    retval = 0;
+    goto end;
 
 err:
-  fdb_slice_destroy(slice_key);
-  retval = -1;
-  goto end; 
+    fdb_slice_destroy(slice_key);
+    retval = -1;
+    goto end; 
 end: 
-  fdb_bytes_destroy(bytes);
-  return retval;
+    fdb_bytes_destroy(bytes);
+    return retval;
 }
 
-struct keys_val{
+int decode_dels_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pslice){
+    int retval = 0;
+    fdb_slice_t *slice_key = NULL;
+    fdb_bytes_t* bytes = fdb_bytes_create(fdbkey, fdbkeylen);
+
+    size_t read = 0;
+    uint8_t type = rocksdb_decode_fixed8(fdbkey + read);
+    if(type!=FDB_DATA_TYPE_DELS){
+        goto err;
+    }
+    read += sizeof(uint8_t);
+    if(fdb_bytes_skip(bytes, sizeof(uint8_t) + sizeof(uint32_t)) == -1 ){
+        goto err;
+    }
+    if(fdb_bytes_read_slice_len_left(bytes, &slice_key) == -1){
+        goto err;
+    }
+    *pslice = slice_key;
+    retval = 0;
+    goto end;
+
+err:
+    fdb_slice_destroy(slice_key);
+    retval = -1;
+    goto end; 
+end: 
+    fdb_bytes_destroy(bytes);
+    return retval;
+}
+
+
+struct keys_val_t{
+    size_t      ref_;
     uint8_t     type_;
-    uint16_t    seq_;    
+    uint8_t     stat_;
+    uint32_t    seq_;
+    void*       slice_;
 };
 
-typedef struct keys_val  keys_val;
+typedef struct keys_val_t  keys_val_t;
 
-static keys_val* create_keys_val(uint8_t type, uint16_t seq){
-    keys_val *val = (keys_val*)fdb_malloc(sizeof(keys_val));
-    val->type_=  type;
-    val->seq_ = seq;
+static keys_val_t* create_keys_val(){
+    keys_val_t *val = (keys_val_t*)fdb_malloc(sizeof(keys_val_t));
+    memset(val, 0, sizeof(keys_val_t));
+    val->ref_ = 1;
     return val;
 }
 
-static void destroy_keys_val(void* val){
-    fdb_free(val);
+static void destroy_keys_val(keys_val_t* kval){
+    if(kval!=NULL){
+        kval->ref_ -= 1;
+        if(kval->ref_ == 0){
+            if(kval->type_ == FDB_DATA_TYPE_STRING){
+                fdb_slice_destroy(kval->slice_);
+            }
+            fdb_free(kval);
+        }
+    }
+}
+
+static void incr_ref_keys_val(keys_val_t* kval){
+    if(kval!=NULL){
+        kval->ref_ += 1;
+    } 
 }
 
 static void deleter_for_keys_val(const char* key, size_t keylen, void* val){
-    destroy_keys_val(val);
+    destroy_keys_val((keys_val_t*)val);
+}
+
+static size_t charge_keys_val(const fdb_slice_t* key, const keys_val_t* kval){
+    size_t result = fdb_slice_length(key);
+    if(kval->type_ == FDB_DATA_TYPE_STRING){
+        if(kval->slice_!=NULL){
+            result += fdb_slice_length((fdb_slice_t*)(kval->slice_));
+        }
+    }
+    return result;
 }
 
 
-static int get_keys_val(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, keys_val** pkval){
+
+static int get_keys_val(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, keys_val_t** pkval){
     int retval = 0;
     char *val = NULL, *errptr = NULL;
     size_t vallen = 0;
@@ -79,14 +144,15 @@ static int get_keys_val(fdb_context_t* context, fdb_slot_t* slot, const fdb_slic
     //getting from lru cache
     rocksdb_cache_handle_t *handle = rocksdb_cache_lookup(slot->keys_cache_, fdb_slice_data(key), fdb_slice_length(key));
     if(handle != NULL){
-        *pkval = (keys_val*)rocksdb_cache_value(slot->keys_cache_, handle);
+        *pkval = (keys_val_t*)rocksdb_cache_value(slot->keys_cache_, handle);
+        incr_ref_keys_val(*pkval);
         retval = 1;
         goto end;
     }
   
     //getting from rocksdb
     fdb_slice_t *slice_key = NULL;
-    encode_meta_key(fdb_slice_data(key), fdb_slice_length(key), FDB_META_TYPE_KEYS, &slice_key);
+    encode_keys_key(fdb_slice_data(key), fdb_slice_length(key), &slice_key);
     rocksdb_readoptions_t* readoptions = rocksdb_readoptions_create();
     val = rocksdb_get_cf(context->db_, readoptions, slot->handle_, fdb_slice_data(slice_key), fdb_slice_length(slice_key), &vallen, &errptr);
     rocksdb_readoptions_destroy(readoptions);
@@ -98,9 +164,31 @@ static int get_keys_val(fdb_context_t* context, fdb_slot_t* slot, const fdb_slic
         goto end;
     }
     if(val != NULL){
-        uint8_t type = rocksdb_decode_fixed8(val);
-        uint16_t seq = rocksdb_decode_fixed16(val + sizeof(uint8_t));
-        *pkval = create_keys_val(type, seq);
+        size_t read = 0;
+        uint8_t type = rocksdb_decode_fixed8(val + read);
+        read += sizeof(uint8_t);
+        uint8_t stat = rocksdb_decode_fixed8(val + read);
+        read += sizeof(uint8_t);
+        uint32_t seq = rocksdb_decode_fixed32(val + read);
+        read += sizeof(uint32_t);
+        if(vallen>=read){
+            *pkval = create_keys_val();
+            (*pkval)->type_ = type;
+            (*pkval)->stat_ = stat;
+            (*pkval)->seq_ = seq;
+            if(type == FDB_DATA_TYPE_STRING){
+                (*pkval)->slice_ = fdb_slice_create(val+read, vallen-read);
+            }else{
+                (*pkval)->slice_ = NULL;
+            }
+            size_t charge = charge_keys_val(key, *pkval);
+            handle = rocksdb_cache_insert(slot->keys_cache_, fdb_slice_data(key), fdb_slice_length(key), *pkval, charge, deleter_for_keys_val);
+            incr_ref_keys_val(*pkval);
+        }else{
+            fprintf(stderr, "%s main key type %c, value len %lu error.\n", __func__, type, vallen); 
+            retval = -1;
+            goto end;
+        }
         retval = 1;
     }else{
         retval = 0;
@@ -112,36 +200,53 @@ end:
   return retval;
 }
 
-static int set_keys_val(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, keys_val* kval){
+static int set_keys_val(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, keys_val_t* kval){
     int retval = 0;
     char *errptr = NULL;
 
-    size_t charge = fdb_slice_length(key) + sizeof(keys_val);
+    size_t charge = charge_keys_val(key, kval);
+
     rocksdb_cache_handle_t *handle = rocksdb_cache_insert(slot->keys_cache_, 
                                                           fdb_slice_data(key), 
                                                           fdb_slice_length(key),
                                                           kval,
                                                           charge,
                                                           deleter_for_keys_val);
+    if(handle!=NULL){
+        incr_ref_keys_val(kval);
+    }
+
 
     fdb_slice_t *slice_key = NULL;
-    encode_meta_key(fdb_slice_data(key), fdb_slice_length(key), FDB_META_TYPE_KEYS, &slice_key);
+    encode_keys_key(fdb_slice_data(key), fdb_slice_length(key), &slice_key);
+
+    char buff[sizeof(uint32_t)] = {0};
+    rocksdb_encode_fixed8(buff, kval->type_);
+    fdb_slice_t *slice_val = fdb_slice_create(buff, sizeof(uint8_t));
+    rocksdb_encode_fixed8(buff, kval->stat_);
+    fdb_slice_string_push_back(slice_val, buff, sizeof(uint8_t));
+    rocksdb_encode_fixed32(buff, kval->seq_);
+    fdb_slice_string_push_back(slice_val, buff, sizeof(uint32_t));
+    if(kval->type_ == FDB_DATA_TYPE_STRING){
+        if(kval->slice_!=NULL){
+           fdb_slice_string_push_back(slice_val, 
+                                      fdb_slice_data((fdb_slice_t*)(kval->slice_)), 
+                                      fdb_slice_length((fdb_slice_t*)(kval->slice_)));;
+        } 
+    }
+
     rocksdb_writeoptions_t* writeoptions = rocksdb_writeoptions_create();
-    char buff[sizeof(uint8_t) + sizeof(uint16_t)] = {0};
-    char* pos = buff;
-    rocksdb_encode_fixed8(pos, kval->type_);
-    pos += sizeof(uint8_t);
-    rocksdb_encode_fixed16(pos, kval->seq_);
     rocksdb_put_cf(context->db_,
                    writeoptions,
                    slot->handle_,
                    fdb_slice_data(slice_key),
                    fdb_slice_length(slice_key),
-                   buff,
-                   sizeof(uint8_t) + sizeof(uint16_t), 
+                   fdb_slice_data(slice_val),
+                   fdb_slice_length(slice_val),
                    &errptr);
     rocksdb_writeoptions_destroy(writeoptions);
     fdb_slice_destroy(slice_key);
+    fdb_slice_destroy(slice_val);
     if(errptr != NULL){
         fprintf(stderr, "%s rocksdb_put_cf fail %s.\n", __func__, errptr);
         rocksdb_free(errptr);
@@ -165,7 +270,7 @@ static int rem_keys_val(fdb_context_t* context, fdb_slot_t* slot, const fdb_slic
   
     //deling from rocksdb
     fdb_slice_t *slice_key = NULL;
-    encode_meta_key(fdb_slice_data(key), fdb_slice_length(key), FDB_META_TYPE_KEYS, &slice_key);
+    encode_keys_key(fdb_slice_data(key), fdb_slice_length(key), &slice_key);
     rocksdb_writeoptions_t* writeoptions = rocksdb_writeoptions_create();
     rocksdb_delete_cf(context->db_, 
                       writeoptions, 
@@ -188,37 +293,36 @@ end:
 }
 
 
-int keys_enc(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t type){
+int keys_set_string(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, fdb_slice_t* val){
     int retval = 0;
-    keys_val *kval = NULL;
 
+    keys_val_t *kval = NULL;
     int ret = get_keys_val(context, slot, key, &kval);
     if(ret == 1){
-        fdb_slice_uint16_push_front(key, kval->seq_); 
-        retval = FDB_OK;
-    }else if(ret == 0){
-        kval = create_keys_val(type, 0xFF01);
-        if(set_keys_val(context, slot, key, kval)!=1){
-            retval = FDB_ERR;
+        fdb_slice_incr_ref(val);
+        if(kval->type_==FDB_DATA_TYPE_STRING){
+            fdb_slice_destroy(kval->slice_);
         }else{
-            fdb_slice_uint16_push_front(key, kval->seq_); 
-            retval = FDB_OK;
-        } 
+            if(kval->stat_ == FDB_KEY_STAT_NORMAL){
+                //TODO mark old main key deleted
+            }
+            kval->seq_ += 1;
+            kval->stat_ = FDB_KEY_STAT_NORMAL;
+            kval->type_ = FDB_DATA_TYPE_STRING;
+        }
+        kval->slice_ = val;
+    }else if(ret == 0){
+        fdb_slice_incr_ref(val);
+        kval = create_keys_val();
+        kval->type_ = FDB_DATA_TYPE_STRING;
+        kval->stat_ = FDB_KEY_STAT_NORMAL;
+        kval->seq_ = FDB_KEY_INIT_SEQ;
+        kval->slice_ = val; 
     }else{
-        retval = FDB_ERR;
+        retval = FDB_ERR; 
+        goto end;
     }
-    return retval;
-}
-
-int keys_del(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){
-    int retval = 0;
-    keys_val *kval = NULL;
-
-    int ret = get_keys_val(context, slot, key, &kval);
-    if(ret == 1){
-        //TODO save the old keys_val to other place.
-
-        kval->seq_ += 1;
+    if(kval!=NULL){
         if(set_keys_val(context, slot, key, kval)!=1){
             retval = FDB_ERR;
         }else{
@@ -226,17 +330,127 @@ int keys_del(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){
         }
         goto end;
     }
-    retval = FDB_ERR;
+    retval = FDB_OK;
 
 end:
+    if(kval!=NULL) destroy_keys_val(kval);
+    return retval; 
+}
+
+int keys_get_string(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, fdb_slice_t** pval){
+    int retval = 0;
+    
+    keys_val_t *kval = NULL;
+    if(get_keys_val(context, slot, key, &kval)!=1){
+       retval = FDB_OK_NOT_EXIST; 
+    }else{
+        if(kval->stat_ == FDB_KEY_STAT_NORMAL){
+            if(kval->type_ == FDB_DATA_TYPE_STRING){
+                fdb_slice_t *sl = (fdb_slice_t*)(kval->slice_);
+                fdb_slice_incr_ref(sl);
+                *pval = sl;
+                retval = FDB_OK;
+            }else{ 
+                retval = FDB_ERR_WRONG_TYPE_ERROR;
+            }
+        }else{
+            retval = FDB_OK_NOT_EXIST;
+        }
+    }
+
+    return retval; 
+}
+
+
+
+int keys_enc(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t type){
+    int retval = 0;
+    keys_val_t *kval = NULL;
+
+    if(type == FDB_DATA_TYPE_STRING){
+        retval = FDB_ERR_WRONG_TYPE_ERROR;
+        goto end;
+    }
+    int ret = get_keys_val(context, slot, key, &kval);
+    if(ret == 1){
+        if(kval->stat_ == FDB_KEY_STAT_NORMAL){
+            if(kval->type_ != type){
+                retval = FDB_ERR_WRONG_TYPE_ERROR;
+                goto end;
+            }
+        }else{
+            kval->stat_ = FDB_KEY_STAT_NORMAL;
+            kval->type_ = type; 
+            kval->seq_ += 1;
+            if(set_keys_val(context, slot, key, kval)!=1){
+                retval = FDB_ERR;
+                goto end;
+            }
+        }
+        fdb_slice_uint32_push_front(key, kval->seq_); 
+        retval = FDB_OK;
+    }else if(ret == 0){
+        kval = create_keys_val();
+        kval->type_ = type;
+        kval->seq_ = FDB_KEY_INIT_SEQ;
+        kval->stat_ = FDB_KEY_STAT_NORMAL;
+        kval->slice_ = NULL;
+        if(set_keys_val(context, slot, key, kval)!=1){
+            retval = FDB_ERR;
+        }else{
+            fdb_slice_uint32_push_front(key, kval->seq_); 
+            retval = FDB_OK;
+        } 
+    }else{
+        retval = FDB_ERR;
+    }
+
+end:
+    if(kval != NULL) destroy_keys_val(kval);
     return retval;
 }
+
+int keys_del(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){
+    int retval = 0;
+
+    keys_val_t *kval = NULL;
+    int ret = get_keys_val(context, slot, key, &kval);
+    if(ret == 1){
+        if(kval->stat_!=FDB_KEY_STAT_NORMAL){
+            retval = FDB_OK_NOT_EXIST;
+        }else{
+            if(kval->type_ == FDB_DATA_TYPE_STRING){
+                if(kval->slice_!=NULL){
+                    fdb_slice_destroy(kval->slice_);
+                    kval->slice_ = NULL;
+                }
+            }else{
+                //TODO mark old main key deleted
+            }
+            kval->stat_ = FDB_KEY_STAT_PENDING;
+            if(set_keys_val(context, slot, key, kval)!=1){
+                retval = FDB_ERR;
+                goto end;
+            }
+            retval = FDB_OK;
+        }
+    }else if(ret == 0){
+        retval = FDB_OK_NOT_EXIST;
+    }else{
+        retval = FDB_ERR; 
+    }
+
+end:
+    if(kval!=NULL) destroy_keys_val(kval);
+    return retval;
+}
+
 
 int keys_rem(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){
     int retval = 0;
 
     int ret = rem_keys_val(context, slot, key);
-    if(ret==1){
+    if(ret>=0){
         retval = FDB_OK;
     }
     retval = FDB_ERR; 
@@ -246,12 +460,16 @@ int keys_rem(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){
 
 int keys_get(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, uint8_t* type){
     int retval = 0;
-    keys_val *kval = NULL;
+    keys_val_t *kval = NULL;
 
     int ret = get_keys_val(context, slot, key, &kval);
     if(ret == 1){
-        *type = kval->type_;
-        retval = FDB_OK;
+        if(kval->stat_ == FDB_KEY_STAT_NORMAL){
+            *type = kval->type_;
+            retval = FDB_OK; 
+        }else{
+            retval = FDB_OK_NOT_EXIST;
+        }
     }else if(ret == 0){
         retval = FDB_OK_NOT_EXIST;
     }else{
