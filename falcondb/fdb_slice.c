@@ -8,7 +8,7 @@
 
 
 struct fdb_slice_t {
-    size_t ref_;
+    fdb_ref_t ref_;
     size_t capacity_;
     size_t start_;
     size_t length_;
@@ -32,19 +32,16 @@ fdb_slice_t* fdb_slice_create(const char* data, size_t len){
     }
     
     slice->data_[slice->start_ + slice->length_] = '\0';
-    slice->ref_ = 1;
+    slice->ref_.refcnt_ = 1;
     return slice;
 }
 
-void fdb_slice_incr_ref(fdb_slice_t* slice){
-  slice->ref_ += 1;
-}
 
 void fdb_slice_destroy(void* slice){
   if(slice!=NULL){
     fdb_slice_t *sl = (fdb_slice_t*)slice;
-    sl->ref_ -= 1;
-    if(sl->ref_ == 0){
+    sl->ref_.refcnt_ -= 1;
+    if(sl->ref_.refcnt_ == 0){
       fdb_free(sl->data_);
       fdb_free(sl);     
     }

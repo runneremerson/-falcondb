@@ -13,8 +13,6 @@ fdb_slice_t* fdb_slice_create(const char* data, size_t len);
 void fdb_slice_destroy(void* slice);
 
 
-void fdb_slice_incr_ref(fdb_slice_t* slice);
-
 //push front
 void fdb_slice_string_push_front(fdb_slice_t* slice, const char* str, size_t len);
 

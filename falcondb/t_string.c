@@ -73,8 +73,64 @@ end:
 }
 
 
+int string_mset(fdb_context_t* context, fdb_slot_t* slot,  fdb_array_t* kvs, fdb_array_t** rets){
+    int retval = FDB_OK;
+
+    if((kvs->length_%2)==1){
+        retval = FDB_ERR_WRONG_NUMBER_ARGUMENTS;
+        goto  end;
+    }
+    int len = kvs->length_/2;
+    fdb_array_t *array = fdb_array_create(len);
+    
+    for(int i=0; i<kvs->length_;){
+        fdb_slice_t *key = (fdb_slice_t*)(fdb_array_at(array, i++)->val_.vval_);
+        fdb_slice_t *val = (fdb_slice_t*)(fdb_array_at(array, i++)->val_.vval_);
+        fdb_val_node_t *ret = fdb_val_node_create();
+        ret->retval_ = string_set(context, slot, key, val);
+        fdb_array_push_back(array, ret);
+    }
+    *rets = array; 
+    retval = FDB_OK;
+
+end:
+    return retval;
+}
+
+
+int string_msetnx(fdb_context_t* context, fdb_slot_t* slot, fdb_array_t* kvs, fdb_array_t** rets){ 
+    int retval = FDB_OK;
+
+    if((kvs->length_%2)==1){
+        retval = FDB_ERR_WRONG_NUMBER_ARGUMENTS;
+        goto  end;
+    }
+
+    int len = kvs->length_/2;
+    fdb_array_t *array = fdb_array_create(len);
+    
+    for(int i=0; i<kvs->length_;){
+        fdb_slice_t *key = (fdb_slice_t*)(fdb_array_at(array, i++)->val_.vval_);
+        fdb_slice_t *val = (fdb_slice_t*)(fdb_array_at(array, i++)->val_.vval_);
+        fdb_val_node_t *ret = fdb_val_node_create();
+        ret->retval_ = string_setnx(context, slot, key, val);
+        fdb_array_push_back(array, ret);
+    }
+    *rets = array; 
+    retval = FDB_OK;
+
+end:
+    return retval;
+}
+
+
 int string_get(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, fdb_slice_t** pvalue){
     return keys_get_string(context, slot, key, pvalue);
+}
+
+
+int string_mget(fdb_context_t* context, fdb_slot_t* slot, fdb_array_t* keys, fdb_array_t** rets){
+   return 0; 
 }
 
 static int is_int64_overflow(int64_t val, int64_t by){ 

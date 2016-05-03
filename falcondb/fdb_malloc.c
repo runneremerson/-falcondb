@@ -1,3 +1,5 @@
+#include "fdb_malloc.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,7 +21,10 @@
 #define free(ptr) je_free(ptr)
 #endif
 
-
+void fdb_incr_ref_count(void* ptr){
+    fdb_ref_t *ref = (fdb_ref_t*)ptr;
+    ref->refcnt_ += 1;
+}
 
 static void fdb_malloc_oom(size_t size) {
     fprintf(stderr, "fdb_malloc: Out of memory trying to allocate %zu bytes\n",

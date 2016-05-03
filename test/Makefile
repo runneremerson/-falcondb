@@ -4,12 +4,13 @@ LIBS = ../libfdb.a
 
 CFLAGS+= -std=gnu99 -I../  -DUSE_TCMALLOC=1  -DUSE_INT=1 
 
-all: simple_example.o test_context.o test_util.o test_slice.o test_bytes.o
+all: simple_example.o test_context.o test_util.o test_slice.o test_bytes.o test_object.o
 	${CXX}  -o simple_example    simple_example.o     ${CLIBS}
 	${CXX}  -o test_context      test_context.o       ${LIBS} ${CLIBS}
 	${CXX}  -o test_util      	 test_util.o       	  ${LIBS} ${CLIBS}
 	${CXX}  -o test_slice      	 test_slice.o         ${LIBS} ${CLIBS}
 	${CXX}  -o test_bytes      	 test_bytes.o         ${LIBS} ${CLIBS}
+	${CXX}  -o test_object       test_object.o        ${LIBS} ${CLIBS}
 
 
 
@@ -27,6 +28,9 @@ test_slice.o: test_slice.c
 
 test_bytes.o: test_bytes.c
 	${CC} ${CFLAGS} -c test_bytes.c
+
+test_object.o: test_object.c
+	${CC} ${CFLAGS} -c test_object.c
 
 clean:
 	rm -f *.o

@@ -20,65 +20,76 @@ void fdb_val_node_destroy(fdb_val_node_t* node){
 }
 
 fdb_list_t* fdb_list_create(){
-  fdb_list_t *list = fdb_malloc(sizeof(fdb_list_t));
-  if(list == NULL){
-    return NULL;
-  }
-  list->head_ = NULL;
-  list->tail_ = NULL;
-  list->length_ = 0;
-  return list;
+    fdb_list_t *list = fdb_malloc(sizeof(fdb_list_t));
+    if(list == NULL){
+        return NULL;
+    }
+    list->head_ = NULL;
+    list->tail_ = NULL;
+    list->length_ = 0;
+    return list;
+}
+
+static void remove_fdb_val_node(fdb_val_node_t* node){
+    if(node != NULL){
+        if(node->prev_!=NULL){
+            node->prev_->next_ = node->next_;
+        }
+        if(node->next_!=NULL){
+            node->next_->prev_ = node->prev_;
+        }
+    }
 }
 
 void fdb_list_destroy(fdb_list_t* list){
-  if(list != NULL){
-    fdb_val_node_t *node=NULL;
-    while(list->head_!=NULL){
-      node = list->head_->next_;
-      fdb_val_node_destroy(list->head_);
-      list->length_ -= 1;
-      list->head_ = node;
+    if(list != NULL){
+        fdb_val_node_t *node=NULL;
+        while(list->head_!=NULL){
+            node = list->head_;
+            remove_fdb_val_node(node);
+            list->head_ = node->next_;
+            fdb_val_node_destroy(node);
+        }
+        fdb_free(list);
     }
-    fdb_free(list);
-  }
 }
 
 size_t fdb_list_push_back(fdb_list_t* list, fdb_val_node_t* node){
-  if(list == NULL){
-    return 0;
-  }
-  if(node == NULL){
+    if(list == NULL){
+        return 0;
+    }
+    if(node == NULL){
+        return list->length_;
+    }
+    if(list->tail_!=NULL){
+        list->tail_->next_ = node;
+        node->prev_ = list->tail_;
+        list->tail_ = node;
+    }else{
+        list->tail_ = node;
+        list->head_ = node;
+    }
+    list->length_ += 1;
     return list->length_;
-  }
-  if(list->head_!=NULL){
-    list->tail_->next_ = node;
-    node->prev_ = list->tail_;
-    list->tail_ = node;
-  }else{
-    list->tail_ = node;
-    list->head_ = node;
-  }
-  list->length_ += 1;
-  return list->length_;
 }
 
 size_t fdb_list_push_front(fdb_list_t* list, fdb_val_node_t* node){
-  if( list == NULL ){
-    return 0;
-  }
-  if( node == NULL ){
+    if( list == NULL ){
+        return 0;
+    }
+    if( node == NULL ){
+        return list->length_;
+    }
+    if( list->head_ != NULL){
+        list->head_->prev_ = node;
+        node->next_ = list->head_;
+        list->head_ = node;
+    }else{
+        list->head_ = node;
+        list->tail_ = node;
+    }
+    list->length_ += 1;
     return list->length_;
-  }
-  if( list->head_ != NULL){
-    list->head_->prev_ = node;
-    node->next_ = list->head_;
-    list->head_ = node;
-  }else{
-    list->head_ = node;
-    list->tail_ = node;
-  }
-  list->length_ += 1;
-  return list->length_;
 }
 
 fdb_val_node_t* fdb_list_back(fdb_list_t* list){
@@ -96,23 +107,14 @@ fdb_val_node_t* fdb_list_front(fdb_list_t* list){
     return NULL; 
 }
 
-
-static void remove_fdb_val_node(fdb_val_node_t* node){
-  if(node != NULL){
-    if(node->prev_!=NULL){
-      node->prev_->next_ = node->next_;
-    }
-    if(node->next_!=NULL){
-      node->next_->prev_ = node->prev_;
-    }
-  }
-}
-
 void fdb_list_pop_front(fdb_list_t* list){
     if(list != NULL && list->length_>0){
         remove_fdb_val_node(list->head_);
         list->head_ = list->head_->next_;
         list->length_ -= 1;
+        if(list->length_==0){
+            list->tail_ = NULL;
+        }
     }
 }
 
@@ -121,6 +123,9 @@ void fdb_list_pop_back(fdb_list_t* list){
         remove_fdb_val_node(list->tail_);
         list->tail_ = list->tail_->prev_;
         list->length_ -= 1;
+        if(list->length_==0){
+            list->head_ = NULL;
+        }
     }
 }
 
@@ -129,31 +134,31 @@ fdb_list_iter_t* fdb_list_iter_create(const fdb_list_t* list){
         return NULL;
     }
     fdb_list_iter_t *iter = fdb_malloc(sizeof(fdb_list_iter_t));
-    iter->next_ = list->head_;
+    iter->curr_ = list->head_;
     iter->length_ = list->length_;
     iter->now_ = 0;
     return iter;
 }
 
 void fdb_list_iter_destroy(fdb_list_iter_t* iter){
-  fdb_free(iter);
+    fdb_free(iter);
 }
 
-fdb_val_node_t* fdb_list_next(fdb_list_iter_t** piter){
-  if(*piter == NULL){
-    return NULL;
-  }
-  if((*piter)->next_ == NULL){
-    return NULL;
-  }
-  fdb_val_node_t *node = (*piter)->next_;
-  (*piter)->next_ = (*piter)->next_->next_;
-  (*piter)->now_ += 1;
-  return node;
+fdb_val_node_t* fdb_list_next(fdb_list_iter_t* iter){
+    if(iter == NULL){
+        return NULL;
+    }
+    if(iter->curr_ == NULL){
+        return NULL;
+    }
+    fdb_val_node_t *node = iter->curr_;
+    iter->curr_ = node->next_;
+    iter->now_ += 1;
+    return node;
 }
 
 fdb_array_t* fdb_array_create(size_t cap){
-    cap = (cap==0)?2:cap;
+    cap = (cap<=1)?2:cap;
     fdb_array_t *array = fdb_malloc(sizeof(fdb_array_t));
     array->length_ = 0;
     array->capacity_ = cap;
@@ -169,13 +174,13 @@ void fdb_array_destroy(fdb_array_t* array){
 }
 
 static size_t ensure_array_capacity(size_t len){
-    size_t capacity = len;
-    if(capacity>16){
-        capacity += (len>>1);
+    size_t cap = len;
+    if(cap>16){
+        cap += (len>>1);
     }else{
-        capacity += len;
+        cap += len;
     }
-    return capacity;
+    return cap;
 }
 
 size_t fdb_array_push_back(fdb_array_t* array, fdb_val_node_t* node){
@@ -200,10 +205,10 @@ size_t fdb_array_pop_back(fdb_array_t* array){
     return array->length_;
 }
 
-fdb_val_node_t* fdb_array_at(fdb_array_t* array, size_t index){
+fdb_val_node_t* fdb_array_at(fdb_array_t* array, size_t ind){
     if(array==NULL) return NULL;
-    if(array->length_<=index) return NULL;
-    return array->array_[index];
+    if(array->length_<=ind) return NULL;
+    return array->array_[ind];
 }
 
 fdb_val_node_t* fdb_array_back(fdb_array_t* array){
