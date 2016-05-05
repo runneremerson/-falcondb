@@ -130,7 +130,23 @@ int string_get(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key,
 
 
 int string_mget(fdb_context_t* context, fdb_slot_t* slot, fdb_array_t* keys, fdb_array_t** rets){
-   return 0; 
+    int retval = 0;
+
+    int len = keys->length_;
+    fdb_array_t *array = fdb_array_create(len);
+    for(int i=0; i<keys->length_; ++i){
+        fdb_slice_t *key = (fdb_slice_t*)(fdb_array_at(array, i)->val_.vval_);
+        fdb_slice_t *val = NULL;
+        fdb_val_node_t *ret = fdb_val_node_create(); 
+        ret->retval_ = string_get(context, slot, key, &val);
+        if(ret->retval_==FDB_OK){
+            ret->val_.vval_ = val; 
+        }
+        fdb_array_push_back(array, ret);
+    }
+    retval = FDB_OK;
+
+    return retval;
 }
 
 static int is_int64_overflow(int64_t val, int64_t by){ 

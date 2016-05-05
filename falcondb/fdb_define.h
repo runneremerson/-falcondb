@@ -1,6 +1,7 @@
 #ifndef FDB_DEFINE_H
 #define FDB_DEFINE_H
 
+#define FDB_DATA_TYPE_KEY_LEN_MAX            255
 
 
 //main key type
