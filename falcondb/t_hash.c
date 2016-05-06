@@ -348,8 +348,43 @@ end:
 }
 
 
-int hash_length(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint64_t* length){
+int hash_setnx(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, const fdb_slice_t* field, const fdb_slice_t* value){ 
     int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_HASH);
+    if(retval == FDB_OK){
+        fdb_slice_t* slice_val = NULL;
+        int ret = hget_one(context, slot, key, field, &slice_val);
+        if(ret == 1){
+            retval = FDB_OK_BUT_ALREADY_EXIST;
+        }else if(ret == 0){
+            ret = hset_one(context, slot, key, field, value);
+            if(ret > 0){
+                if(hash_incr_size(context, slot, key, 1) < 0){
+                    retval = FDB_ERR;
+                    goto end;
+                }
+            }
+            char *errptr = NULL;
+            fdb_slot_writebatch_commit(context, slot, &errptr);
+            if(errptr != NULL){
+                fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", __func__, errptr);
+                rocksdb_free(errptr);
+                retval = FDB_ERR;
+                goto  end;
+            }
+            retval = FDB_OK;
+        }else{
+            retval = FDB_ERR;
+        }
+        fdb_slice_destroy(slice_val);
+    }
+
+end:
+    return retval;
+}
+
+
+int hash_length(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint64_t* length){
+    int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval == FDB_OK){
         int ret =  hlen_one(context, slot, key, length);
         if(ret == 1){
@@ -365,7 +400,7 @@ int hash_length(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint
 
 
 int hash_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, const fdb_slice_t* field){ 
-    int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_HASH);
+    int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval != FDB_OK){
         goto end;
     }
@@ -391,6 +426,82 @@ int hash_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, const f
     }else{
         retval = FDB_ERR;
     }
+
+end:
+    return retval;
+}
+
+int hash_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, const fdb_slice_t* field){
+    int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
+    if(retval == FDB_OK){
+        fdb_slice_t *slice_val = NULL;
+        int ret = hget_one(context, slot, key, field, &slice_val);
+        if(ret == 1){
+            retval = FDB_OK;
+        }else if(ret == 0){
+            retval = FDB_OK_NOT_EXIST;
+        }else{
+            retval = FDB_ERR;
+        }
+        fdb_slice_destroy(slice_val);
+    }
+    return retval;
+}
+
+int hash_incr(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, const fdb_slice_t* field, int64_t init, int64_t by, int64_t* val){
+    int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_HASH);
+    if(retval == FDB_OK){
+        fdb_slice_t *slice_val = NULL;
+        int ret = hget_one(context, slot, key, field, &slice_val);
+        if(ret == 1){ 
+            if(fdb_slice_length(slice_val) != sizeof(int64_t)){
+                retval = FDB_ERR_IS_NOT_INTEGER;
+                goto end;
+            }
+            uint64_t _old = rocksdb_decode_fixed64(fdb_slice_data(slice_val));
+            int64_t *old = (int64_t*)&_old; 
+            if(is_int64_overflow(*old, by)){
+                retval = FDB_ERR_INCDECR_OVERFLOW;
+                goto end;
+            }
+            char buff[sizeof(int64_t)] = {0};
+            rocksdb_encode_fixed64(buff, *old + by);
+            fdb_slice_destroy(slice_val);
+            slice_val = fdb_slice_create(buff, sizeof(int64_t));
+        }else if(ret == 0){
+            if(is_int64_overflow(init, by)){
+                retval = FDB_ERR_INCDECR_OVERFLOW;
+                goto end;
+            } 
+            char buff[sizeof(int64_t)] = {0};
+            rocksdb_encode_fixed64(buff, init + by);
+            fdb_slice_destroy(slice_val);
+            slice_val = fdb_slice_create(buff, sizeof(int64_t));
+        }else{
+            retval = FDB_ERR;
+            goto end;
+        }
+        ret = hset_one(context, slot, key, field, slice_val);
+        if(ret >=0){
+            if(ret > 0){
+                if(hash_incr_size(context, slot, key, 1) < 0){
+                    retval = FDB_ERR;
+                    goto end;
+                }
+            }
+            char *errptr = NULL;
+            fdb_slot_writebatch_commit(context, slot, &errptr);
+            if(errptr != NULL){
+                fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", __func__, errptr);
+                rocksdb_free(errptr);
+                retval = FDB_ERR;
+                goto  end;
+            }
+            retval = FDB_OK;
+        }else{
+            retval = FDB_ERR;
+        }
+    } 
 
 end:
     return retval;

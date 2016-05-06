@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 
 
 
@@ -82,3 +83,18 @@ double lex_to_double(uint64_t v){
     double *pdv = (double*)(&v);
     return big_endian_double(*pdv); //big_endian conversion again for recovery
 }
+
+
+int is_int64_overflow(int64_t val, int64_t by){ 
+    if(by<0 && val<0){
+        if((INT64_MIN-by)>val){
+            return 1;
+        }
+    }else if(by>0 && val>0){
+        if((INT64_MAX-by)<val){
+            return 1;
+        }
+    }
+    return 0;
+}
+

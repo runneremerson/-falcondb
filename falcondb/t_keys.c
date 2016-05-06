@@ -405,6 +405,43 @@ end:
     return retval;
 }
 
+int keys_exs(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t type){ 
+    int retval = 0;
+    keys_val_t *kval = NULL;
+
+    if(type == FDB_DATA_TYPE_STRING){
+        retval = FDB_ERR_WRONG_TYPE_ERROR;
+        goto end;
+    }
+    int ret = get_keys_val(context, slot, key, &kval);
+    if(ret == 1){
+        if(kval->stat_ == FDB_KEY_STAT_NORMAL){
+            if(kval->type_ != type){
+                retval = FDB_ERR_WRONG_TYPE_ERROR;
+                goto end;
+            }
+        }else{
+            kval->stat_ = FDB_KEY_STAT_NORMAL;
+            kval->type_ = type; 
+            kval->seq_ += 1;
+            if(set_keys_val(context, slot, key, kval)!=1){
+                retval = FDB_ERR;
+                goto end;
+            }
+        }
+        fdb_slice_uint32_push_front(key, kval->seq_); 
+        retval = FDB_OK;
+    }else if(ret == 0){
+        retval = FDB_OK_NOT_EXIST;
+    }else{
+        retval = FDB_ERR;
+    }
+
+end:
+    if(kval != NULL) destroy_keys_val(kval);
+    return retval;
+}
+
 int keys_del(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key){
     int retval = 0;
 

@@ -25,5 +25,6 @@ uint64_t double_to_lex(double v);
 
 double lex_to_double(uint64_t v);
 
+int is_int64_overflow(int64_t val, int64_t by); 
 #endif //FDB_UTIL_H
 

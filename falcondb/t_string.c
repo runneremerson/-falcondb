@@ -149,19 +149,6 @@ int string_mget(fdb_context_t* context, fdb_slot_t* slot, fdb_array_t* keys, fdb
     return retval;
 }
 
-static int is_int64_overflow(int64_t val, int64_t by){ 
-    if(by<0 && val<0){
-        if((INT64_MIN-by)>val){
-            return 1;
-        }
-    }else if(by>0 && val>0){
-        if((INT64_MAX-by)<val){
-            return 1;
-        }
-    }
-    return 0;
-}
-
 
 int string_incr(fdb_context_t* context, fdb_slot_t* slot, const fdb_slice_t* key, int64_t init, int64_t by, int64_t* val){   
     int retval = 0;
