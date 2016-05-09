@@ -300,7 +300,7 @@ static int hash_incr_size(fdb_context_t* context, fdb_slot_t* slot, const fdb_sl
 
 
 int hash_get(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, const fdb_slice_t* field, fdb_slice_t** pslice){
-    int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_HASH);
+    int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval == FDB_OK){
         int ret = hget_one(context, slot, key, field, pslice);
         if(ret == 1){
@@ -314,6 +314,19 @@ int hash_get(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, const f
     return  retval;
 }
 
+
+int hash_getall(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t** pfvs){
+    int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
+    return retval;
+}
+
+int hash_mget(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* fields, fdb_array_t** pvals){
+    int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
+    if(retval == FDB_OK){
+        
+    }
+    return retval;
+}
 
 int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, const fdb_slice_t* field, const fdb_slice_t* value){ 
 

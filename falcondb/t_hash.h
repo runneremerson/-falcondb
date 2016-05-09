@@ -19,9 +19,13 @@ int decode_hash_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t **pslice_k
 
 int hash_get(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, const fdb_slice_t* field, fdb_slice_t** pslice);
 
-int hash_getall(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_list_t** pfvs);
+int hash_getall(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t** pfvs);
 
 int hash_mget(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* fields, fdb_array_t** pvals);
+
+int hash_keys(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t** pfs);
+
+int hash_vals(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t** pvs);
 
 int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, const fdb_slice_t* field, const fdb_slice_t* value);
 
