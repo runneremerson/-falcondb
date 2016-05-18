@@ -15,8 +15,8 @@ enum {
 typedef struct fdb_iterator_t       fdb_iterator_t;
 
 fdb_iterator_t* fdb_iterator_create(fdb_context_t* context, fdb_slot_t* slot,
-                                    const fdb_slice_t* key, const fdb_slice_t* start,
-                                    const fdb_slice_t* end, uint64_t limit,
+                                    fdb_slice_t* key, fdb_slice_t* start,
+                                    fdb_slice_t* end, uint64_t limit,
                                     int direction);
 
 void fdb_iterator_destroy(fdb_iterator_t* iterator);

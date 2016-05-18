@@ -4,13 +4,16 @@ LIBS = ../libfdb.a
 
 CFLAGS+= -std=gnu99 -I../  -DUSE_TCMALLOC=1  -DUSE_INT=1 
 
-all: simple_example.o test_context.o test_util.o test_slice.o test_bytes.o test_object.o
+all: simple_example.o test_context.o test_util.o test_slice.o test_bytes.o test_object.o test_keys.o test_string.o
 	${CXX}  -o simple_example    simple_example.o     ${CLIBS}
 	${CXX}  -o test_context      test_context.o       ${LIBS} ${CLIBS}
 	${CXX}  -o test_util      	 test_util.o       	  ${LIBS} ${CLIBS}
 	${CXX}  -o test_slice      	 test_slice.o         ${LIBS} ${CLIBS}
 	${CXX}  -o test_bytes      	 test_bytes.o         ${LIBS} ${CLIBS}
 	${CXX}  -o test_object       test_object.o        ${LIBS} ${CLIBS}
+	${CXX}  -o test_keys       	 test_keys.o          ${LIBS} ${CLIBS}
+	${CXX}  -o test_string       test_string.o        ${LIBS} ${CLIBS}
+
 
 
 
@@ -32,6 +35,13 @@ test_bytes.o: test_bytes.c
 test_object.o: test_object.c
 	${CC} ${CFLAGS} -c test_object.c
 
+test_keys.o: test_keys.c
+	${CC} ${CFLAGS} -c test_keys.c
+
+test_string.o: test_string.c
+	${CC} ${CFLAGS} -c test_string.c
+
+
 clean:
 	rm -f *.o
 	rm -f simple_example
@@ -40,3 +50,5 @@ clean:
 	rm -f test_slice
 	rm -f test_bytes
 	rm -f test_object
+	rm -f test_string
+	rm -f test_keys

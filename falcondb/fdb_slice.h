@@ -37,9 +37,9 @@ void fdb_slice_uint32_push_back(fdb_slice_t* slice, uint32_t val);
 void fdb_slice_uint64_push_back(fdb_slice_t* slice, uint64_t val);
 
 
-const char* fdb_slice_data(const fdb_slice_t* slice);
+char* fdb_slice_data(fdb_slice_t* slice);
 
-size_t fdb_slice_length(const fdb_slice_t* slice);
+size_t fdb_slice_length(fdb_slice_t* slice);
 
 
 #endif //FDB_SLICE_H

@@ -9,9 +9,7 @@ fdb_val_node_t* fdb_val_node_create(){
     if(node == NULL ){
         return NULL;
     }
-    node->retval_ = 0;
-    node->next_ = NULL;
-    node->prev_ = NULL;
+    memset(node, 0, sizeof(fdb_val_node_t));
     return node;
 }
 
@@ -187,7 +185,7 @@ size_t fdb_array_push_back(fdb_array_t* array, fdb_val_node_t* node){
     if(array->capacity_ < (array->length_ + 1)){
         array->capacity_ = ensure_array_capacity(array->length_ + 1);
         fdb_val_node_t **_array = (fdb_val_node_t**)fdb_malloc(array->capacity_ * sizeof(fdb_val_node_t*));
-        for(int i=0; i<array->length_; ++i){
+        for(size_t i=0; i<array->length_; ++i){
             _array[i] = array->array_[i];
         }
         fdb_free(array->array_);

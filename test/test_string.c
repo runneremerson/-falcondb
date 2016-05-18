@@ -9,9 +9,8 @@
 
 int main(int argc, char* argv[]){
 
-    fdb_slot_t **slots = fdb_slots_create(2);
-    const char* names[2] = {"default", "name2"};
-    fdb_context_t* ctx = fdb_context_create("/tmp/falcondb_test_string", 128, 128, 2, names, slots);
+    fdb_context_t* ctx = fdb_context_create("/tmp/falcondb_test_string", 128, 128, 2);
+    fdb_slot_t **slots = (fdb_slot_t**)ctx->slots_;
 
     fdb_slice_t *key1 = fdb_slice_create("string_key1", strlen("string_key1"));
     fdb_slice_t *val1 = fdb_slice_create("string_val1", strlen("string_val1"));
@@ -187,7 +186,6 @@ int main(int argc, char* argv[]){
     fdb_slice_destroy(val4);
     fdb_array_destroy(kvs1);
     fdb_array_destroy(keys);
-    fdb_slots_destroy(slots, 2);
     fdb_context_destroy(ctx);
     return 0;
 }

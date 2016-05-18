@@ -17,8 +17,8 @@ struct fdb_iterator_t {
 };
 
 fdb_iterator_t* fdb_iterator_create(fdb_context_t* context, fdb_slot_t* slot,
-                                    const fdb_slice_t* key, const fdb_slice_t* start,
-                                    const fdb_slice_t* end, uint64_t limit,
+                                    fdb_slice_t* key, fdb_slice_t* start,
+                                    fdb_slice_t* end, uint64_t limit,
                                     int direction){
     fdb_iterator_t *iterator = (fdb_iterator_t*)fdb_malloc(sizeof(fdb_iterator_t));
     iterator->key_ = fdb_slice_create(fdb_slice_data(key), fdb_slice_length(key));

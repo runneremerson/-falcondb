@@ -14,36 +14,27 @@ import (
 	"unsafe"
 )
 
-var CNULL = unsafe.Pointer(uintptr(0))
-
 const (
 	LOCK_KEY_NUM  = 1024
 	FDB_ITEM_SIZE = unsafe.Sizeof(C.fdb_item_t{})
+	INT_SIZE      = unsafe.Sizeof(C.int(0))
 )
 
-func ConvertCItemPointer2GoByte(items *C.fdb_item_t, i int) []byte {
+func ConvertCItemPointer2GoByte(items *C.fdb_item_t, i int, value *FdbValue) {
 	var item *C.fdb_item_t
-	var result []byte
 	item = (*C.fdb_item_t)(unsafe.Pointer(uintptr(unsafe.Pointer(items)) + uintptr(i)*FDB_ITEM_SIZE))
 	if unsafe.Pointer(item.data_) != CNULL {
-		result = C.GoBytes(unsafe.Pointer(item.data_), C.int(item.data_len_))
+		value.val = C.GoBytes(unsafe.Pointer(item.data_), C.int(item.data_len_))
 	} else {
-		result = nil
+		value.val = nil
 	}
-	return result
+	value.ret = int(item.retval_)
 }
 
-type FdbError struct {
-	retcode int
-	message string
-}
-
-func (err *FdbError) Code() int {
-	return err.retcode
-}
-
-func (err *FdbError) Error() string {
-	return err.message
+func ConvertCIntPointer2Go(integers *C.int, i int, val *int) {
+	if unsafe.Pointer(integers) != CNULL {
+		*val = int(*(*C.int)(unsafe.Pointer(uintptr(unsafe.Pointer(integers)) + uintptr(i)*INT_SIZE)))
+	}
 }
 
 func getLockID(key string) uint32 {
@@ -52,15 +43,22 @@ func getLockID(key string) uint32 {
 }
 
 type FdbLock struct {
+	pref *sync.RWMutex
 	lock sync.RWMutex
 }
 
 func (flock *FdbLock) acquire() {
+	if flock.pref != nil {
+		flock.pref.RLock()
+	}
 	flock.lock.Lock()
 }
 
 func (flock *FdbLock) release() {
 	flock.lock.Unlock()
+	if flock.pref != nil {
+		flock.pref.RUnlock()
+	}
 }
 
 type FdbSlot struct {
@@ -68,8 +66,8 @@ type FdbSlot struct {
 	slot     uint64
 	readCnt  uint64
 	writeCnt uint64
-	lockKeys []FdbLock
 	lockSlot FdbLock
+	lockKeys []FdbLock
 }
 
 type FdbManager struct {
@@ -112,6 +110,10 @@ func (fdb *FdbManager) InitDB(file_path string, cache_size int, write_buffer_siz
 			writeCnt: uint64(0),
 		}
 		fdb.slots[i].lockKeys = make([]FdbLock, LOCK_KEY_NUM)
+		fdb.slots[i].lockSlot.pref = nil
+		for j := 0; j < LOCK_KEY_NUM; j++ {
+			fdb.slots[i].lockKeys[j].pref = &(fdb.slots[i].lockSlot.lock)
+		}
 	}
 	fdb.inited = true
 	return nil
@@ -147,14 +149,14 @@ func (slot *FdbSlot) Get(key []byte) ([]byte, error) {
 	ret := C.fdb_get(slot.context, C.uint64_t(slot.slot), &item_key, &pitem_val)
 	iRet := int(ret)
 
-	var val []byte = nil
+	var val FdbValue
 	if iRet == 0 {
-		val = ConvertCItemPointer2GoByte(pitem_val, 0)
+		ConvertCItemPointer2GoByte(pitem_val, 0, &val)
 	}
 
 	defer C.destroy_fdb_item_array(pitem_val, C.size_t(1))
 
-	return val, &FdbError{retcode: iRet}
+	return val.val, &FdbError{retcode: iRet}
 }
 
 func (slot *FdbSlot) Set(key []byte, val []byte, exptime uint32, opt int) error {
@@ -177,4 +179,76 @@ func (slot *FdbSlot) Set(key []byte, val []byte, exptime uint32, opt int) error 
 	iRet := int(ret)
 
 	return &FdbError{retcode: iRet}
+}
+
+func (slot *FdbSlot) Del(key []byte) error {
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	csKey := (*C.char)(unsafe.Pointer(&key[0]))
+
+	var item_key C.fdb_item_t
+	item_key.data_ = csKey
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	ret := C.fdb_del(slot.context, C.uint64_t(slot.slot), &item_key)
+	iRet := int(ret)
+
+	return &FdbError{retcode: iRet}
+}
+
+func (slot *FdbSlot) MSet(kvs []FdbValue, opt int) ([]FdbValue, error) {
+	lock := slot.fetchSlotLock()
+	lock.acquire()
+	defer lock.release()
+
+	item_kvs := make([]C.fdb_item_t, len(kvs))
+
+	for i := 0; i < len(kvs); i++ {
+		item_kvs[i].data_ = (*C.char)(unsafe.Pointer(&(kvs[i].val[0])))
+		item_kvs[i].data_len_ = C.uint64_t(len(kvs[i].val))
+	}
+
+	rets := (*C.int)(CNULL)
+	ret := C.fdb_mset(slot.context, C.uint64_t(slot.slot), C.size_t(len(kvs)), (*C.fdb_item_t)(unsafe.Pointer(&item_kvs[0])), &rets, C.int(opt))
+
+	iRet := int(ret)
+	var retvalues []FdbValue
+	if iRet == 0 {
+		length := len(kvs) / 2
+		retvalues = make([]FdbValue, length)
+		for i := 0; i < length; i++ {
+			tmpInt := int(0)
+			ConvertCIntPointer2Go(rets, i, &tmpInt)
+			retvalues[i].ret = tmpInt
+		}
+	}
+	return retvalues, &FdbError{retcode: iRet}
+}
+
+func (slot *FdbSlot) MGet(keys []FdbValue) ([]FdbValue, error) {
+	lock := slot.fetchSlotLock()
+	lock.acquire()
+	defer lock.release()
+
+	item_keys := make([]C.fdb_item_t, len(keys))
+	for i := 0; i < len(keys); i++ {
+		item_keys[i].data_ = (*C.char)(unsafe.Pointer(&(keys[i].val[0])))
+		item_keys[i].data_len_ = C.uint64_t(len(keys[i].val))
+	}
+
+	item_vals := (*C.fdb_item_t)(CNULL)
+
+	ret := C.fdb_mget(slot.context, C.uint64_t(slot.slot), C.size_t(len(keys)), (*C.fdb_item_t)(unsafe.Pointer(&item_keys[0])), &item_vals)
+	iRet := int(ret)
+
+	var retvalues []FdbValue
+	if iRet == 0 {
+		retvalues = make([]FdbValue, len(keys))
+		for i := 0; i < len(keys); i++ {
+			ConvertCItemPointer2GoByte(item_vals, i, &retvalues[i])
+		}
+	}
+	return retvalues, &FdbError{retcode: iRet}
 }

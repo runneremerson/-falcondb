@@ -22,7 +22,7 @@ fdb_slice_t* fdb_slice_create(const char* data, size_t len){
         slice->length_ = 0;
         slice->capacity_ = 8 + slice->length_ + 1;
         slice->start_ = 8;
-        slice->data_ = NULL;
+        slice->data_ = fdb_malloc(slice->capacity_);
     }else{
         slice->length_ = len;
         slice->capacity_ = 8 + slice->length_ + 1;
@@ -141,14 +141,14 @@ void fdb_slice_uint64_push_front(fdb_slice_t* slice, uint64_t val){
     fdb_slice_string_push_front(slice, buf, sizeof(uint64_t)); 
 }
 
-const char* fdb_slice_data(const fdb_slice_t* slice){
+char* fdb_slice_data(fdb_slice_t* slice){
   if(slice != NULL){
     return slice->data_ + slice->start_;     
   }
   return NULL;
 }
 
-size_t fdb_slice_length(const fdb_slice_t* slice){
+size_t fdb_slice_length(fdb_slice_t* slice){
   if(slice != NULL){
     return slice->length_;     
   }
