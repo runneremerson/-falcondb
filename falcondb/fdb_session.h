@@ -31,8 +31,9 @@ int fdb_set(fdb_context_t* context,
             uint64_t id,
             fdb_item_t* key,
             fdb_item_t* val,
-            uint64_t exptime, 
-            int en);
+            int64_t duration, 
+            int en,
+            int* ef);
 
 int fdb_mset(fdb_context_t* context,
              uint64_t id,

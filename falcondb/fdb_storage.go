@@ -7,8 +7,14 @@ import (
 var CNULL = unsafe.Pointer(uintptr(0))
 
 type FdbValue struct {
-	val []byte
-	ret int
+	Val []byte
+	Ret error
+}
+
+type FdbPair struct {
+	Key []byte
+	Val []byte
+	Ret error
 }
 
 type FdbError struct {

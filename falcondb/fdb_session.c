@@ -11,6 +11,7 @@
 #include <rocksdb/c.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 
 static void fill_fdb_item(fdb_item_t* item, fdb_slice_t* hold, int retval){
@@ -93,8 +94,8 @@ int fdb_set(fdb_context_t* context,
             uint64_t id,
             fdb_item_t* key,
             fdb_item_t* val,
-            uint64_t exptime, 
-            int en){  
+            int64_t duration, 
+            int en, int* ef){  
     int retval = 0;
     fdb_slot_t* slot = get_slot(context, id);
     fdb_slice_t *slice_key, *slice_val;
@@ -102,6 +103,12 @@ int fdb_set(fdb_context_t* context,
     slice_val = fdb_slice_create(val->data_, val->data_len_);
     if(en == IS_NOT_EXIST){
         retval = string_setnx(context, slot, slice_key, slice_val);
+        if(retval == FDB_OK_BUT_ALREADY_EXIST){
+            *ef = 0;
+        }else if(retval == FDB_OK){
+            *ef = 1;
+        }
+        
     } else if(en == IS_EXIST){
         retval = string_set(context, slot, slice_key, slice_val);
     } else if(en == IS_EXIST_AND_EXPIRE){
@@ -148,6 +155,7 @@ int fdb_mset(fdb_context_t* context,
         for(int i=0; i<len; ++i){
             fdb_val_node_t *n_ret = fdb_array_at(rets_array, i);
             rets_[i] = n_ret->retval_;
+            printf("fdb--len=%d, rets[%d]=%d\n", len, i, n_ret->retval_);
         }
         *rets = rets_;
     }

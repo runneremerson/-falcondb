@@ -24,11 +24,17 @@ func ConvertCItemPointer2GoByte(items *C.fdb_item_t, i int, value *FdbValue) {
 	var item *C.fdb_item_t
 	item = (*C.fdb_item_t)(unsafe.Pointer(uintptr(unsafe.Pointer(items)) + uintptr(i)*FDB_ITEM_SIZE))
 	if unsafe.Pointer(item.data_) != CNULL {
-		value.val = C.GoBytes(unsafe.Pointer(item.data_), C.int(item.data_len_))
+		value.Val = C.GoBytes(unsafe.Pointer(item.data_), C.int(item.data_len_))
+		ret := int(item.retval_)
+		if ret == 0 {
+			value.Ret = nil
+		} else {
+			value.Ret = &FdbError{retcode: ret}
+		}
 	} else {
-		value.val = nil
+		value.Val = nil
+		value.Ret = nil
 	}
-	value.ret = int(item.retval_)
 }
 
 func ConvertCIntPointer2Go(integers *C.int, i int, val *int) {
@@ -149,17 +155,35 @@ func (slot *FdbSlot) Get(key []byte) ([]byte, error) {
 	ret := C.fdb_get(slot.context, C.uint64_t(slot.slot), &item_key, &pitem_val)
 	iRet := int(ret)
 
+	defer C.destroy_fdb_item_array(pitem_val, C.size_t(1))
+
 	var val FdbValue
 	if iRet == 0 {
 		ConvertCItemPointer2GoByte(pitem_val, 0, &val)
+		return val.Val, nil
 	}
 
-	defer C.destroy_fdb_item_array(pitem_val, C.size_t(1))
-
-	return val.val, &FdbError{retcode: iRet}
+	return val.Val, &FdbError{retcode: iRet}
 }
 
-func (slot *FdbSlot) Set(key []byte, val []byte, exptime uint32, opt int) error {
+func (slot *FdbSlot) Set(key []byte, val []byte) error {
+	_, err := slot.set(key, val, 0, 1)
+	return err
+}
+
+func (slot *FdbSlot) StrLen(key []byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) SetNX(key, val []byte) (int64, error) {
+	return slot.set(key, val, 0, 0)
+}
+
+func (slot *FdbSlot) SetEX(key []byte, duration int64, val []byte) error {
+	return slot.set(key, val, duration, 1)
+}
+
+func (slot *FdbSlot) set(key []byte, val []byte, duration int64, opt int) (int64, error) {
 	lock := slot.fetchKeysLock(string(key))
 	lock.acquire()
 	defer lock.release()
@@ -175,82 +199,124 @@ func (slot *FdbSlot) Set(key []byte, val []byte, exptime uint32, opt int) error 
 	item_val.data_ = csVal
 	item_val.data_len_ = C.uint64_t(len(val))
 
-	ret := C.fdb_set(slot.context, C.uint64_t(slot.slot), &item_key, &item_val, C.uint64_t(exptime), C.int(opt))
-	iRet := int(ret)
+	ef := C.int(1)
 
-	return &FdbError{retcode: iRet}
+	ret := C.fdb_set(slot.context, C.uint64_t(slot.slot), &item_key, &item_val, C.int64_t(duration), C.int(opt), &ef)
+
+	if int(ret) == 0 {
+		return int64(ef), nil
+	}
+	return int64(ef), &FdbError{retcode: int(ret)}
 }
 
-func (slot *FdbSlot) Del(key []byte) error {
-	lock := slot.fetchKeysLock(string(key))
-	lock.acquire()
-	defer lock.release()
-
-	csKey := (*C.char)(unsafe.Pointer(&key[0]))
-
-	var item_key C.fdb_item_t
-	item_key.data_ = csKey
-	item_key.data_len_ = C.uint64_t(len(key))
-
-	ret := C.fdb_del(slot.context, C.uint64_t(slot.slot), &item_key)
-	iRet := int(ret)
-
-	return &FdbError{retcode: iRet}
+func (slot *FdbSlot) IncrBy(key []byte, increment int64) (int64, error) {
+	return 0, nil
 }
 
-func (slot *FdbSlot) MSet(kvs []FdbValue, opt int) ([]FdbValue, error) {
+func (slot *FdbSlot) IncrByFloat(key []byte, increment float64) (float64, error) {
+	return 0.0, nil
+}
+
+func (slot *FdbSlot) Append(key []byte, value []byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) GetSet(key []byte, value []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func (slot *FdbSlot) Del(keys ...[]byte) (int64, error) {
 	lock := slot.fetchSlotLock()
 	lock.acquire()
 	defer lock.release()
 
-	item_kvs := make([]C.fdb_item_t, len(kvs))
+	var cnt int64 = 0
+	for i := 0; i < len(keys); i++ {
 
+		csKey := (*C.char)(unsafe.Pointer(&keys[i][0]))
+
+		var item_key C.fdb_item_t
+		item_key.data_ = csKey
+		item_key.data_len_ = C.uint64_t(len(keys[i]))
+
+		ret := C.fdb_del(slot.context, C.uint64_t(slot.slot), &item_key)
+		if int(ret) == 0 {
+			cnt++
+		}
+	}
+
+	return cnt, nil
+}
+
+func (slot *FdbSlot) MSet(kvs []FdbPair) ([]FdbValue, error) {
+	return slot.mset(kvs, 1)
+}
+
+func (slot *FdbSlot) mset(kvs []FdbPair, opt int) ([]FdbValue, error) {
+	lock := slot.fetchSlotLock()
+	lock.acquire()
+	defer lock.release()
+
+	item_kvs := make([]C.fdb_item_t, 2*len(kvs))
+
+	j := 0
 	for i := 0; i < len(kvs); i++ {
-		item_kvs[i].data_ = (*C.char)(unsafe.Pointer(&(kvs[i].val[0])))
-		item_kvs[i].data_len_ = C.uint64_t(len(kvs[i].val))
+		item_kvs[j].data_ = (*C.char)(unsafe.Pointer(&(kvs[i].Key[0])))
+		item_kvs[j].data_len_ = C.uint64_t(len(kvs[i].Key))
+		j++
+
+		item_kvs[j].data_ = (*C.char)(unsafe.Pointer(&(kvs[i].Val[0])))
+		item_kvs[j].data_len_ = C.uint64_t(len(kvs[i].Val))
+		j++
 	}
 
 	rets := (*C.int)(CNULL)
-	ret := C.fdb_mset(slot.context, C.uint64_t(slot.slot), C.size_t(len(kvs)), (*C.fdb_item_t)(unsafe.Pointer(&item_kvs[0])), &rets, C.int(opt))
+	ret := C.fdb_mset(slot.context, C.uint64_t(slot.slot), C.size_t(2*len(kvs)), (*C.fdb_item_t)(unsafe.Pointer(&item_kvs[0])), &rets, C.int(opt))
 
-	iRet := int(ret)
 	var retvalues []FdbValue
-	if iRet == 0 {
-		length := len(kvs) / 2
+	if int(ret) == 0 {
+		length := len(kvs)
 		retvalues = make([]FdbValue, length)
 		for i := 0; i < length; i++ {
 			tmpInt := int(0)
 			ConvertCIntPointer2Go(rets, i, &tmpInt)
-			retvalues[i].ret = tmpInt
+			if tmpInt == 0 {
+				retvalues[i].Ret = nil
+			} else {
+				retvalues[i].Ret = &FdbError{retcode: tmpInt}
+			}
 		}
 	}
-	return retvalues, &FdbError{retcode: iRet}
+	return retvalues, nil
 }
 
-func (slot *FdbSlot) MGet(keys []FdbValue) ([]FdbValue, error) {
+func (slot *FdbSlot) MGet(keys ...[]byte) ([]FdbValue, error) {
 	lock := slot.fetchSlotLock()
 	lock.acquire()
 	defer lock.release()
 
 	item_keys := make([]C.fdb_item_t, len(keys))
 	for i := 0; i < len(keys); i++ {
-		item_keys[i].data_ = (*C.char)(unsafe.Pointer(&(keys[i].val[0])))
-		item_keys[i].data_len_ = C.uint64_t(len(keys[i].val))
+		item_keys[i].data_ = (*C.char)(unsafe.Pointer(&(keys[i][0])))
+		item_keys[i].data_len_ = C.uint64_t(len(keys[i]))
 	}
 
 	item_vals := (*C.fdb_item_t)(CNULL)
 
 	ret := C.fdb_mget(slot.context, C.uint64_t(slot.slot), C.size_t(len(keys)), (*C.fdb_item_t)(unsafe.Pointer(&item_keys[0])), &item_vals)
-	iRet := int(ret)
+	defer C.destroy_fdb_item_array(item_vals, C.size_t(len(keys)))
 
 	var retvalues []FdbValue
-	if iRet == 0 {
+	if int(ret) == 0 {
 		retvalues = make([]FdbValue, len(keys))
 		for i := 0; i < len(keys); i++ {
 			ConvertCItemPointer2GoByte(item_vals, i, &retvalues[i])
 		}
 	}
-	defer C.destroy_fdb_item_array(item_vals, C.size_t(len(keys)))
 
-	return retvalues, &FdbError{retcode: iRet}
+	return retvalues, nil
+}
+
+func (slot *FdbSlot) Exists(key []byte) (int64, error) {
+	return 0, nil
 }
