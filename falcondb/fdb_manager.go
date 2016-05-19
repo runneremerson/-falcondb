@@ -250,5 +250,7 @@ func (slot *FdbSlot) MGet(keys []FdbValue) ([]FdbValue, error) {
 			ConvertCItemPointer2GoByte(item_vals, i, &retvalues[i])
 		}
 	}
+	defer C.destroy_fdb_item_array(item_vals, C.size_t(len(keys)))
+
 	return retvalues, &FdbError{retcode: iRet}
 }

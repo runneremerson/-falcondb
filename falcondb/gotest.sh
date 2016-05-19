@@ -13,7 +13,7 @@ cd ./falcondb
 
 go test -c 
 
-./falcondb.test
+./falcondb.test -test.v=true
 
 rm -f ./falcondb.test
 
