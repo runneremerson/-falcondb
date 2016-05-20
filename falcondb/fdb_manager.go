@@ -72,6 +72,10 @@ type FdbSlot struct {
 	lockKeys []FdbLock
 }
 
+func (slot *FdbSlot) Drop() {
+	C.fdb_drop_slot(slot.context, C.uint64_t(slot.slot))
+}
+
 type FdbManager struct {
 	inited bool
 	lock   FdbLock

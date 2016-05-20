@@ -28,6 +28,7 @@ typedef struct fdb_slot_t                   fdb_slot_t;
 //context
 fdb_context_t* fdb_context_create(const char* name, size_t write_buffer_size, size_t cache_size, size_t num_slots);
 void fdb_context_destroy(fdb_context_t* context);
+void fdb_context_drop_slot(fdb_context_t* context, fdb_slot_t* slot);
 
 //writebatch
 void fdb_slot_writebatch_put(fdb_slot_t* slot, const char* key, size_t klen, const char* val, size_t vlen);

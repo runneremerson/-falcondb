@@ -123,6 +123,15 @@ void fdb_context_destroy(fdb_context_t* context){
     fdb_free(context); 
 }
 
+void fdb_context_drop_slot(fdb_context_t* context, fdb_slot_t* slot){
+    char *errptr = NULL;
+    rocksdb_drop_column_family(context->db_, slot->handle_, &errptr);
+    if(errptr!=NULL){ 
+        fprintf(stderr, "%s rocksdb_drop_column_family fail %s.\n", __func__, errptr);
+        rocksdb_free(errptr);
+    }
+}
+
 void fdb_slot_writebatch_put(fdb_slot_t* slot, const char* key, size_t klen, const char* val, size_t vlen){
     rocksdb_mutex_lock(slot->mutex_);
     rocksdb_writebatch_put_cf(slot->batch_, slot->handle_, key, klen, val, vlen); 

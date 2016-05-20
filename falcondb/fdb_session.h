@@ -26,6 +26,7 @@ void free_int_array(void* array);
 
 int set_fdb_signal_handler(const char* name);
 
+void fdb_drop_slot(fdb_context_t* context, uint64_t id);
 
 int fdb_set(fdb_context_t* context,
             uint64_t id,
