@@ -17,6 +17,11 @@ type FdbPair struct {
 	Ret error
 }
 
+type FdbScore struct {
+	Field []byte
+	Score []byte
+}
+
 type FdbError struct {
 	retcode int
 	message string

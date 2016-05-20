@@ -180,7 +180,8 @@ func (slot *FdbSlot) SetNX(key, val []byte) (int64, error) {
 }
 
 func (slot *FdbSlot) SetEX(key []byte, duration int64, val []byte) error {
-	return slot.set(key, val, duration, 1)
+	_, err := slot.set(key, val, duration, 1)
+	return err
 }
 
 func (slot *FdbSlot) set(key []byte, val []byte, duration int64, opt int) (int64, error) {
@@ -318,5 +319,113 @@ func (slot *FdbSlot) MGet(keys ...[]byte) ([]FdbValue, error) {
 }
 
 func (slot *FdbSlot) Exists(key []byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) HGet(key, field []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func (slot *FdbSlot) HSet(key, field, value []byte) (int64, error) {
+	return 0, nil
+}
+func (slot *FdbSlot) HMget(key []byte, fields ...[]byte) ([][]byte, error) {
+	return nil, nil
+}
+func (slot *FdbSlot) HDel(key []byte, args ...[]byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) HLen(key []byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) HIncrByFloat(key []byte, field []byte, delta float64) (float64, error) {
+	return 0.0, nil
+}
+
+func (slot *FdbSlot) HIncrBy(key []byte, field []byte, delta int64) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) HExists(key, field []byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) HSetNX(key, field, value []byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) HGetAll(key []byte) ([]FdbPair, error) {
+	return nil, nil
+}
+func (slot *FdbSlot) HMset(key []byte, args ...FdbPair) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) ZAdd(key []byte, args ...FdbScore) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) ZCard(key []byte) (int64, error) {
+	return 0, nil
+}
+func (slot *FdbSlot) ZScore(key []byte, member []byte) (int64, error) {
+	return 0, nil
+}
+func (slot *FdbSlot) ZRem(key []byte, members ...[]byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) ZCount(key []byte, min int64, max int64) (int64, error) {
+	return 0, nil
+}
+func (slot *FdbSlot) ZRemRangeByRank(key []byte, start int, stop int) (int64, error) {
+	return 0, nil
+}
+func (slot *FdbSlot) ZRemRangeByScore(key []byte, min int64, max int64) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) ZRemRangeByLex(key []byte, min []byte, max []byte, rangeType uint8) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) ZLexCount(key []byte, min []byte, max []byte, rangeType uint8) (int64, error) {
+	return 0, nil
+}
+func (slot *FdbSlot) ZRange(key []byte, start int, stop int) ([]FdbScore, error) {
+	return nil, nil
+}
+
+func (slot *FdbSlot) ZRank(key []byte, member []byte) (int64, error) {
+	return 0, nil
+}
+func (slot *FdbSlot) ZRevRank(key []byte, member []byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) ZIncrBy(key []byte, delta int64, member []byte) (int64, error) {
+	return 0, nil
+}
+
+//set
+func (slot *FdbSlot) SMembers(key []byte) ([][]byte, error) {
+	return nil, nil
+}
+
+func (slot *FdbSlot) SIsMember(key []byte, member []byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) SCard(key []byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) SRem(key []byte, args ...[]byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) SAdd(key []byte, args ...[]byte) (int64, error) {
 	return 0, nil
 }
