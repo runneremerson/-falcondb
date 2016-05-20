@@ -8,13 +8,12 @@ var CNULL = unsafe.Pointer(uintptr(0))
 
 type FdbValue struct {
 	Val []byte
-	Ret error
+	Ret int
 }
 
 type FdbPair struct {
 	Key []byte
 	Val []byte
-	Ret error
 }
 
 type FdbScore struct {

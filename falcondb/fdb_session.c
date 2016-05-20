@@ -155,7 +155,7 @@ int fdb_mset(fdb_context_t* context,
         for(int i=0; i<len; ++i){
             fdb_val_node_t *n_ret = fdb_array_at(rets_array, i);
             rets_[i] = n_ret->retval_;
-            printf("fdb--len=%d, rets[%d]=%d\n", len, i, n_ret->retval_);
+            //printf("fdb--len=%d, rets[%d]=%d\n", len, i, n_ret->retval_);
         }
         *rets = rets_;
     }

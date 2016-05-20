@@ -62,7 +62,6 @@ func TestString(t *testing.T) {
 		val := "val" + ind
 		kvs[i].Key = []byte(key)
 		kvs[i].Val = []byte(val)
-		kvs[i].Ret = nil
 	}
 	rets5, err5 := slot.MSet(kvs)
 	if err5 != nil {
@@ -70,8 +69,8 @@ func TestString(t *testing.T) {
 	}
 
 	for i := 0; i < len(rets5); i++ {
-		if rets5[i].Ret != nil {
-			t.Logf("MSet rets5[%d] ret %d", i, rets5[i].Ret.(*FdbError).Code())
+		if rets5[i] != nil {
+			t.Logf("MSet rets5[%d] ret %d", i, rets5[i].(*FdbError).Code())
 		}
 	}
 
