@@ -4,9 +4,10 @@ include build_config.mk
 
 
 all:
-	cd "${ROCKSDB_PATH}"; ${MAKE} static_lib -j 4 
+#	cd "${ROCKSDB_PATH}"; ${MAKE} static_lib -j 4 
 	cd "${ROCKSDB_PATH}"; ${MAKE} shared_lib
 	cd falcondb/; ${MAKE}
+test:
 	cd test/; ${MAKE}
 
 clean:
@@ -14,7 +15,7 @@ clean:
 	cd falcondb/; ${MAKE} clean
 	cd test/; ${MAKE} clean
 
-clean_all: clean
+distclean: clean
 	cd "${ROCKSDB_PATH}"; ${MAKE} clean
 	cd "${SNAPPY_PATH}"; ${MAKE} clean
 	cd "${ZLIB_PATH}"; ${MAKE} clean
