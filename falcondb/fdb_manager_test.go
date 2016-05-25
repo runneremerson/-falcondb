@@ -2,7 +2,7 @@ package fdb
 
 import (
 	"bytes"
-	_ "fmt"
+	"fmt"
 	"strconv"
 	"testing"
 )
@@ -30,7 +30,7 @@ func TestString(t *testing.T) {
 
 	err1 := slot.Set(key1, val1)
 	if err1 != nil {
-		t.Errorf("Get key1 %s val1 %s err, ret %d", string(key1), string(val1), err1.(*FdbError).Code())
+		t.Errorf("Set key1 %s val1 %s err, ret %d", string(key1), string(val1), err1.(*FdbError).Code())
 	}
 
 	key2 := key1
@@ -95,5 +95,26 @@ func TestString(t *testing.T) {
 		}
 		i++
 	}
+}
 
+func BenchmarkSet(b *testing.B) {
+	fdb, _err := GetFdb()
+	if _err != nil {
+		panic("newFdbManager error " + _err.Error())
+	}
+	slot := fdb.GetFdbSlot(5)
+	fmt.Printf("slot ID %llu", slot.slot)
+
+	for i := 0; i < 1000; i += 1 {
+		for j := 0; j < 10000; j += 1 {
+			iVal := j + 1
+			iKey := j + 1
+			val := []byte(strconv.Itoa(iVal))
+			key := []byte(strconv.Itoa(iKey))
+			err := slot.Set(val, key)
+			if err != nil {
+				fmt.Printf("Set key %s val %s err, ret %d", string(key), string(val), err.(*FdbError).Code())
+			}
+		}
+	}
 }
