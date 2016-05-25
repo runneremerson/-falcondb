@@ -1,8 +1,6 @@
 package fdb
 
 /*
-#cgo  linux CFLAGS: -std=gnu99 -W -I./ -I../deps/rocksdb-4.2/include  -DUSE_TCMALLOC=1 -DUSE_INT=1
-#cgo  LDFLAGS:	 -L/usr/local/lib  -L../deps/rocksdb-4.2 -L../deps/snappy-1.1.1/.libs -lpthread -lm -lsnappy -ltcmalloc -lrocksdb
 #include "fdb_session.h"
 #include "fdb_context.h"
 */
