@@ -157,13 +157,13 @@ func (slot *FdbSlot) Get(key []byte) ([]byte, error) {
 
 	defer C.destroy_fdb_item_array(pitem_val, C.size_t(1))
 
-	var val FdbValue
 	if iRet == 0 {
+		var val FdbValue
 		ConvertCItemPointer2GoByte(pitem_val, 0, &val)
 		return val.Val, nil
 	}
 
-	return val.Val, &FdbError{retcode: iRet}
+	return nil, &FdbError{retcode: iRet}
 }
 
 func (slot *FdbSlot) Set(key []byte, val []byte) error {
@@ -266,8 +266,8 @@ func (slot *FdbSlot) mset(kvs []FdbPair, opt int) ([]error, error) {
 		item_kvs[j].data_len_ = C.uint64_t(len(kvs[i].Key))
 		j++
 
-		item_kvs[j].data_ = (*C.char)(unsafe.Pointer(&(kvs[i].Val[0])))
-		item_kvs[j].data_len_ = C.uint64_t(len(kvs[i].Val))
+		item_kvs[j].data_ = (*C.char)(unsafe.Pointer(&(kvs[i].Value[0])))
+		item_kvs[j].data_len_ = C.uint64_t(len(kvs[i].Value))
 		j++
 	}
 
@@ -292,7 +292,7 @@ func (slot *FdbSlot) mset(kvs []FdbPair, opt int) ([]error, error) {
 	return retvalues, &FdbError{retcode: int(ret)}
 }
 
-func (slot *FdbSlot) MGet(keys ...[]byte) ([]FdbValue, error) {
+func (slot *FdbSlot) MGet(keys ...[]byte) ([][]byte, error) {
 	lock := slot.fetchSlotLock()
 	lock.acquire()
 	defer lock.release()
@@ -308,15 +308,20 @@ func (slot *FdbSlot) MGet(keys ...[]byte) ([]FdbValue, error) {
 	ret := C.fdb_mget(slot.context, C.uint64_t(slot.slot), C.size_t(len(keys)), (*C.fdb_item_t)(unsafe.Pointer(&item_keys[0])), &item_vals)
 	defer C.destroy_fdb_item_array(item_vals, C.size_t(len(keys)))
 
-	var retvalues []FdbValue
 	if int(ret) == 0 {
-		retvalues = make([]FdbValue, len(keys))
+		var value FdbValue
+		retvalues := make([][]byte, len(keys))
 		for i := 0; i < len(keys); i++ {
-			ConvertCItemPointer2GoByte(item_vals, i, &retvalues[i])
+			ConvertCItemPointer2GoByte(item_vals, i, &value)
+			retvalues[i] = value.Val
+			if !(value.Ret == 0 || value.Ret == FDB_OK_NOT_EXIST) {
+				return nil, &FdbError{retcode: value.Ret}
+			}
 		}
+		return retvalues, nil
 	}
 
-	return retvalues, nil
+	return nil, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) Exists(key []byte) (int64, error) {
@@ -357,10 +362,10 @@ func (slot *FdbSlot) HSetNX(key, field, value []byte) (int64, error) {
 	return 0, nil
 }
 
-func (slot *FdbSlot) HGetAll(key []byte) ([]FdbPair, error) {
+func (slot *FdbSlot) HGetAll(key []byte) ([]FdbFVPair, error) {
 	return nil, nil
 }
-func (slot *FdbSlot) HMset(key []byte, args ...FdbPair) (int64, error) {
+func (slot *FdbSlot) HMset(key []byte, args ...FdbFVPair) (int64, error) {
 	return 0, nil
 }
 
@@ -428,5 +433,21 @@ func (slot *FdbSlot) SRem(key []byte, args ...[]byte) (int64, error) {
 }
 
 func (slot *FdbSlot) SAdd(key []byte, args ...[]byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) PExpireAt(key []byte, when int64) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) PTTL(key []byte) (int64, error) {
+	return 0, nil
+}
+
+func (slot *FdbSlot) Type(key []byte) (string, error) {
+	return "", nil
+}
+
+func (slot *FdbSlot) Persist(key []byte) (int64, error) {
 	return 0, nil
 }

@@ -61,7 +61,7 @@ func TestString(t *testing.T) {
 		key := "key" + ind
 		val := "val" + ind
 		kvs[i].Key = []byte(key)
-		kvs[i].Val = []byte(val)
+		kvs[i].Value = []byte(val)
 	}
 	rets5, err5 := slot.MSet(kvs)
 	if err5 != nil {
@@ -90,7 +90,7 @@ func TestString(t *testing.T) {
 		ind := strconv.Itoa(i)
 
 		val := "val" + ind
-		if bytes.Compare([]byte(val), rets6[i].Val) != 0 {
+		if bytes.Compare([]byte(val), rets6[i]) != 0 {
 			t.Logf("MGet rets6[%d] %s,  val %s", i, rets6[i], string(val))
 		}
 		i++
