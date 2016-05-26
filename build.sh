@@ -77,7 +77,8 @@ cd $SNAPPY_PATH
 if [ ! -f Makefile ]; then
 	echo ""
 	echo "##### building snappy... #####"
-	./configure  --with-pic --enable-static
+	#./configure  --with-pic --disable-shared --enable-static
+	./configure  --disable-shared --enable-static
 	# FUCK! snappy compilation doesn't work on some linux!
 	find . | xargs touch
 	make

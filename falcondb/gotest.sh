@@ -23,5 +23,5 @@ go test -c
 
 ./falcondb.test -test.v=true
 
-rm -f ./falcondb.test
+#rm -f ./falcondb.test
 
