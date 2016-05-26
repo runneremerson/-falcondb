@@ -11,6 +11,18 @@
 extern "C" { 
 #endif
 
+void fdb_drop_db(const char*name){
+    char *rocksdb_error = NULL;
+    rocksdb_options_t *options = rocksdb_options_create();
+    rocksdb_options_set_create_if_missing(options, 1);
+    rocksdb_destroy_db(options, name, &rocksdb_error);
+    rocksdb_options_destroy(options);
+    if(rocksdb_error!=NULL){
+        fprintf(stderr, "rocksdb_destroy_db error %s\n", rocksdb_error);
+        rocksdb_free(rocksdb_error);
+    }
+}
+
 
 fdb_context_t* fdb_context_create(const char* name, size_t write_buffer_size, size_t cache_size, size_t num_slots){
     fdb_context_t* context = (fdb_context_t*)(fdb_malloc(sizeof(fdb_context_t)));
@@ -18,10 +30,10 @@ fdb_context_t* fdb_context_create(const char* name, size_t write_buffer_size, si
     context->num_slots_ = num_slots;
     context->slots_ = NULL;
     context->block_cache_ = rocksdb_cache_create_lru(cache_size*1024*1024);
+    rocksdb_filterpolicy_t *policy = rocksdb_filterpolicy_create_bloom(10);
     context->table_options_ = rocksdb_block_based_options_create();
     rocksdb_block_based_options_set_block_cache(context->table_options_, context->block_cache_);
-    rocksdb_block_based_options_set_filter_policy(context->table_options_, context->filter_policy_);
-    context->filter_policy_ = rocksdb_filterpolicy_create_bloom(10);
+    rocksdb_block_based_options_set_filter_policy(context->table_options_, policy);
     context->options_ = rocksdb_options_create();
     rocksdb_options_set_max_open_files(context->options_, 10000);
     rocksdb_options_set_create_if_missing(context->options_, 1);
@@ -95,9 +107,6 @@ err:
     if(context->table_options_!=NULL){
         rocksdb_block_based_options_destroy(context->table_options_);
     }
-    if(context->filter_policy_!=NULL){
-        rocksdb_filterpolicy_destroy(context->filter_policy_);
-    }
     fdb_free(context);
     return NULL;
 }
@@ -124,7 +133,6 @@ void fdb_context_destroy(fdb_context_t* context){
         rocksdb_cache_destroy(context->block_cache_);
         rocksdb_options_destroy(context->options_);
         rocksdb_block_based_options_destroy(context->table_options_);
-        rocksdb_filterpolicy_destroy(context->filter_policy_); 
     }
     fdb_free(context); 
 }

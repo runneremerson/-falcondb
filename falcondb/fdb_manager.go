@@ -88,11 +88,22 @@ func (fdb *FdbManager) GetFdbSlot(id uint64) *FdbSlot {
 	return fdb.slots[id]
 }
 
-func NewFdbManager() (*FdbManager, error) {
+func NewFdbManager() *FdbManager {
 	fdb := &FdbManager{
 		inited: false,
 	}
-	return fdb, nil
+	return fdb
+}
+
+func (fdb *FdbManager) DropDB(file_path string) {
+	fdb.lock.acquire()
+	defer fdb.lock.release()
+
+	csPath := C.CString(file_path)
+	defer C.free(unsafe.Pointer(csPath))
+
+	C.fdb_drop_db(csPath)
+	fdb.inited = false
 }
 
 func (fdb *FdbManager) InitDB(file_path string, cache_size int, write_buffer_size int, num_slots int) error {
@@ -103,6 +114,8 @@ func (fdb *FdbManager) InitDB(file_path string, cache_size int, write_buffer_siz
 		return nil
 	}
 	csPath := C.CString(file_path)
+	defer C.free(unsafe.Pointer(csPath))
+
 	context := C.fdb_context_create(csPath, C.size_t(cache_size), C.size_t(write_buffer_size), C.size_t(num_slots))
 
 	fdb.slots = make([]*FdbSlot, num_slots)

@@ -13,7 +13,6 @@ struct fdb_context_t{
     rocksdb_cache_t*                        block_cache_;
     rocksdb_options_t*                      options_;
     rocksdb_block_based_table_options_t*    table_options_;
-    rocksdb_filterpolicy_t*                 filter_policy_;
 };
 
 struct fdb_slot_t{

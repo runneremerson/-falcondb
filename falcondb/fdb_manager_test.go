@@ -12,8 +12,10 @@ var _err error
 
 func GetFdb() (*FdbManager, error) {
 	if fdb == nil {
-		fdb, _ = NewFdbManager()
-		_err = fdb.InitDB("/tmp/for_test_fdb", 128, 128, 10)
+		fdb = NewFdbManager()
+		dbname := "/tmp/for_test_fdb"
+		fdb.DropDB(dbname)
+		_err = fdb.InitDB(dbname, 128, 128, 10)
 	}
 	return fdb, _err
 }

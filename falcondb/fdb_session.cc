@@ -9,7 +9,6 @@
 #include "t_string.h"
 #include "t_keys.h"
 
-#include <rocksdb/c.h>
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
@@ -100,6 +99,7 @@ void fdb_drop_slot(fdb_context_t* context, uint64_t id){
     fdb_slot_t* slot = get_slot(context, id);
     fdb_context_drop_slot(context, slot);
 }
+
 
 int fdb_set(fdb_context_t* context,
             uint64_t id,

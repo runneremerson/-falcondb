@@ -10,6 +10,9 @@ extern "C" {
 typedef struct fdb_context_t                fdb_context_t;
 typedef struct fdb_slot_t                   fdb_slot_t;
 
+//database
+extern void fdb_drop_db(const char* name);
+
 //context
 extern fdb_context_t* fdb_context_create(const char* name, size_t write_buffer_size, size_t cache_size, size_t num_slots);
 extern void fdb_context_destroy(fdb_context_t* context);
