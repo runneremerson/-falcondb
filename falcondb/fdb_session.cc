@@ -1,3 +1,4 @@
+#include "fdb_types.h"
 #include "fdb_session.h"
 #include "fdb_malloc.h"
 #include "fdb_context.h"
@@ -12,6 +13,11 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
+
+
+#ifdef __cplusplus
+extern "C" { 
+#endif
 
 
 static void fill_fdb_item(fdb_item_t* item, fdb_slice_t* hold, int retval){
@@ -218,10 +224,10 @@ int fdb_mget(fdb_context_t* context,
         for(size_t i=0; i<length; ++i){
             fdb_val_node_t *n_val = fdb_array_at(rets_array, i);
             if(n_val->retval_==FDB_OK){
-                decode_slice_value(&vals_[i], n_val->val_.vval_, n_val->retval_);        
+                decode_slice_value(&vals_[i], (fdb_slice_t*)(n_val->val_.vval_), n_val->retval_);        
                 fdb_slice_destroy(n_val->val_.vval_);
             }else{
-                decode_slice_value(&vals_[i], NULL, n_val->retval_);        
+                decode_slice_value(&vals_[i], (fdb_slice_t*)NULL, n_val->retval_);        
             }
             fdb_val_node_t *n_key = fdb_array_at(keys_array, i);
             fdb_slice_destroy(n_key->val_.vval_);
@@ -260,3 +266,8 @@ int fdb_incrby(fdb_context_t* context,
     fdb_slice_destroy(slice_key);
     return retval; 
 }
+
+
+#ifdef __cplusplus
+}
+#endif

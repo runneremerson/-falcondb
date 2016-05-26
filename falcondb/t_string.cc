@@ -1,6 +1,7 @@
 #include "t_string.h"
 #include "t_keys.h"
 
+#include "fdb_types.h"
 #include "fdb_define.h"
 #include "fdb_slice.h"
 #include "fdb_context.h"
@@ -28,57 +29,46 @@ end:
 }
 
 int string_setnx(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* value){  
-    int retval = FDB_OK;
     if(fdb_slice_length(key) == 0){
         fprintf(stderr, "%s empty key!\n", __func__);
-        retval = FDB_ERR;
-        goto end;
+        return FDB_ERR;
     }
     //get
     fdb_slice_t *slice_value = NULL;
     int found = keys_get_string(context, slot,  key, &slice_value);
     if(found == FDB_OK){
-        retval = FDB_OK_BUT_ALREADY_EXIST;
-        goto end;
+        fdb_slice_destroy(slice_value);
+        return FDB_OK_BUT_ALREADY_EXIST;
     }
-    retval = keys_set_string(context, slot, key, value);
-
-end:
-    fdb_slice_destroy(slice_value);
+    int retval = keys_set_string(context, slot, key, value);
     return retval;
 }
 
 
 int string_setxx(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* value){  
-    int retval = FDB_OK;
     if(fdb_slice_length(key) == 0){
         fprintf(stderr, "%s empty key!\n", __func__);
-        retval = FDB_ERR;
-        goto end;
+        return FDB_ERR;
     }
 
     //get
     fdb_slice_t *slice_value = NULL;
     int found = keys_get_string(context, slot,  key, &slice_value);
     if(found != FDB_OK){
-        retval = found;
-        goto end;
+        return found;
     } 
     //set
-    retval = keys_set_string(context, slot, key, value);
+    int retval = keys_set_string(context, slot, key, value);
 
-end:
     fdb_slice_destroy(slice_value);
     return retval;
 }
 
 
 int string_mset(fdb_context_t* context, fdb_slot_t* slot,  fdb_array_t* kvs, fdb_array_t** rets){
-    int retval = FDB_OK;
 
     if((kvs->length_%2)==1){
-        retval = FDB_ERR_WRONG_NUMBER_ARGUMENTS;
-        goto  end;
+        return FDB_ERR_WRONG_NUMBER_ARGUMENTS;
     }
     int len = kvs->length_/2;
     fdb_array_t *array = fdb_array_create(len);
@@ -91,19 +81,13 @@ int string_mset(fdb_context_t* context, fdb_slot_t* slot,  fdb_array_t* kvs, fdb
         fdb_array_push_back(array, ret);
     }
     *rets = array; 
-    retval = FDB_OK;
-
-end:
-    return retval;
+    return FDB_OK;
 }
 
 
 int string_msetnx(fdb_context_t* context, fdb_slot_t* slot, fdb_array_t* kvs, fdb_array_t** rets){ 
-    int retval = FDB_OK;
-
     if((kvs->length_%2)==1){
-        retval = FDB_ERR_WRONG_NUMBER_ARGUMENTS;
-        goto  end;
+        return FDB_ERR_WRONG_NUMBER_ARGUMENTS;
     }
 
     int len = kvs->length_/2;
@@ -117,10 +101,8 @@ int string_msetnx(fdb_context_t* context, fdb_slot_t* slot, fdb_array_t* kvs, fd
         fdb_array_push_back(array, ret);
     }
     *rets = array; 
-    retval = FDB_OK;
+    return FDB_OK;
 
-end:
-    return retval;
 }
 
 

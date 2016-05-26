@@ -1,5 +1,6 @@
 #include "t_keys.h"
 
+#include "fdb_types.h"
 #include "fdb_define.h"
 #include "fdb_slice.h"
 #include "fdb_context.h"
@@ -131,20 +132,18 @@ static size_t charge_keys_val(fdb_slice_t* key, const keys_val_t* kval){
 
 
 static int get_keys_val(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, keys_val_t** pkval){
-    int retval = 0;
-    char *val = NULL, *errptr = NULL;
-    size_t vallen = 0;
-
-
     //getting from lru cache
     rocksdb_cache_handle_t *handle = rocksdb_cache_lookup(slot->keys_cache_, fdb_slice_data(key), fdb_slice_length(key));
     if(handle != NULL){
         *pkval = (keys_val_t*)rocksdb_cache_value(slot->keys_cache_, handle);
         fdb_incr_ref_count(*pkval);
-        retval = 1;
-        goto end;
+        rocksdb_cache_release(slot->keys_cache_, handle);
+        return 1;
     }
   
+    int retval = 0;
+    char *val = NULL, *errptr = NULL;
+    size_t vallen = 0;
     //getting from rocksdb
     fdb_slice_t *slice_key = NULL;
     encode_keys_key(fdb_slice_data(key), fdb_slice_length(key), &slice_key);
@@ -155,8 +154,7 @@ static int get_keys_val(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* k
     if(errptr != NULL){
         fprintf(stderr, "%s rocksdb_get_cf fail %s.\n", __func__, errptr);
         rocksdb_free(errptr);
-        retval = -1;
-        goto end;
+        return -1;
     }
     if(val != NULL){
         size_t read = 0;
@@ -179,20 +177,18 @@ static int get_keys_val(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* k
             size_t charge = charge_keys_val(key, *pkval);
             handle = rocksdb_cache_insert(slot->keys_cache_, fdb_slice_data(key), fdb_slice_length(key), *pkval, charge, deleter_for_keys_val);
             fdb_incr_ref_count(*pkval);
+            retval = 1;
         }else{
             fprintf(stderr, "%s main key type %c, value len %lu error.\n", __func__, type, vallen); 
             retval = -1;
-            goto end;
         }
-        retval = 1;
+        rocksdb_free(val);
     }else{
         retval = 0;
     }
 
-end:
-  if(handle != NULL) rocksdb_cache_release(slot->keys_cache_, handle);
-  if(val != NULL) rocksdb_free(val);
-  return retval;
+    if(handle!=NULL)rocksdb_cache_release(slot->keys_cache_, handle);
+    return retval;
 }
 
 static int set_keys_val(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, keys_val_t* kval){
@@ -359,27 +355,27 @@ int keys_get_string(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
 
 
 int keys_enc(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t type){
-    int retval = 0;
-    keys_val_t *kval = NULL;
 
     if(type == FDB_DATA_TYPE_STRING){
-        retval = FDB_ERR_WRONG_TYPE_ERROR;
-        goto end;
+        return FDB_ERR_WRONG_TYPE_ERROR;
     }
+
+    int retval = 0;
+    keys_val_t *kval = NULL;
     int ret = get_keys_val(context, slot, key, &kval);
     if(ret == 1){
         if(kval->stat_ == FDB_KEY_STAT_NORMAL){
             if(kval->type_ != type){
-                retval = FDB_ERR_WRONG_TYPE_ERROR;
-                goto end;
+                destroy_keys_val(kval);
+                return FDB_ERR_WRONG_TYPE_ERROR;
             }
         }else{
             kval->stat_ = FDB_KEY_STAT_NORMAL;
             kval->type_ = type; 
             kval->seq_ += 1;
             if(set_keys_val(context, slot, key, kval)!=1){
-                retval = FDB_ERR;
-                goto end;
+                destroy_keys_val(kval);
+                return FDB_ERR;
             }
         }
         fdb_slice_uint32_push_front(key, kval->seq_); 
@@ -396,12 +392,11 @@ int keys_enc(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t
             fdb_slice_uint32_push_front(key, kval->seq_); 
             retval = FDB_OK;
         } 
+        destroy_keys_val(kval);
     }else{
         retval = FDB_ERR;
     }
 
-end:
-    if(kval != NULL) destroy_keys_val(kval);
     return retval;
 }
 
@@ -410,18 +405,17 @@ int keys_exs(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t
     keys_val_t *kval = NULL;
 
     if(type == FDB_DATA_TYPE_STRING){
-        retval = FDB_ERR_WRONG_TYPE_ERROR;
-        goto end;
+        return  FDB_ERR_WRONG_TYPE_ERROR;
     }
     int ret = get_keys_val(context, slot, key, &kval);
     if(ret == 1){
         if(kval->stat_ == FDB_KEY_STAT_NORMAL){
             if(kval->type_ != type){
                 retval = FDB_ERR_WRONG_TYPE_ERROR;
-                goto end;
+            }else{
+                fdb_slice_uint32_push_front(key, kval->seq_); 
+                retval = FDB_OK;
             }
-            fdb_slice_uint32_push_front(key, kval->seq_); 
-            retval = FDB_OK;
         }else{
             retval = FDB_OK_NOT_EXIST;
         }
@@ -431,8 +425,7 @@ int keys_exs(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t
         retval = FDB_ERR;
     }
 
-end:
-    if(kval != NULL) destroy_keys_val(kval);
+    if(kval != NULL)destroy_keys_val(kval);
     return retval;
 }
 

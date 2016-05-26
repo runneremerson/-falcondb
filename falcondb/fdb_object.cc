@@ -1,3 +1,4 @@
+#include "fdb_types.h"
 #include "fdb_object.h"
 #include "fdb_malloc.h"
 
@@ -5,7 +6,7 @@
 
 
 fdb_val_node_t* fdb_val_node_create(){
-    fdb_val_node_t *node = fdb_malloc(sizeof(fdb_val_node_t));
+    fdb_val_node_t *node = (fdb_val_node_t*)fdb_malloc(sizeof(fdb_val_node_t));
     if(node == NULL ){
         return NULL;
     }
@@ -18,7 +19,7 @@ void fdb_val_node_destroy(fdb_val_node_t* node){
 }
 
 fdb_list_t* fdb_list_create(){
-    fdb_list_t *list = fdb_malloc(sizeof(fdb_list_t));
+    fdb_list_t *list = (fdb_list_t*)fdb_malloc(sizeof(fdb_list_t));
     if(list == NULL){
         return NULL;
     }
@@ -131,7 +132,7 @@ fdb_list_iter_t* fdb_list_iter_create(const fdb_list_t* list){
     if(list == NULL || list->head_== NULL){
         return NULL;
     }
-    fdb_list_iter_t *iter = fdb_malloc(sizeof(fdb_list_iter_t));
+    fdb_list_iter_t *iter = (fdb_list_iter_t*)fdb_malloc(sizeof(fdb_list_iter_t));
     iter->curr_ = list->head_;
     iter->length_ = list->length_;
     iter->now_ = 0;
@@ -157,7 +158,7 @@ fdb_val_node_t* fdb_list_next(fdb_list_iter_t* iter){
 
 fdb_array_t* fdb_array_create(size_t cap){
     cap = (cap<=1)?2:cap;
-    fdb_array_t *array = fdb_malloc(sizeof(fdb_array_t));
+    fdb_array_t *array = (fdb_array_t*)fdb_malloc(sizeof(fdb_array_t));
     array->length_ = 0;
     array->capacity_ = cap;
     array->array_ = (fdb_val_node_t**)fdb_malloc(array->capacity_ * sizeof(fdb_val_node_t*));

@@ -22,11 +22,11 @@ fdb_slice_t* fdb_slice_create(const char* data, size_t len){
         slice->length_ = 0;
         slice->capacity_ = 8 + slice->length_ + 1;
         slice->start_ = 8;
-        slice->data_ = fdb_malloc(slice->capacity_);
+        slice->data_ = (char*)fdb_malloc(slice->capacity_);
     }else{
         slice->length_ = len;
         slice->capacity_ = 8 + slice->length_ + 1;
-        slice->data_ = fdb_malloc(slice->capacity_);
+        slice->data_ = (char*)fdb_malloc(slice->capacity_);
         slice->start_ = 8;
         memcpy(slice->data_ + slice->start_, data, len);
     }
@@ -64,7 +64,7 @@ void fdb_slice_string_push_back(fdb_slice_t* slice, const char* str, size_t len)
   if(len > 0){
     if(slice->capacity_ < (slice->start_ + slice->length_ + len + 1)){
       slice->capacity_ = ensure_slice_capacity(slice->start_ + slice->length_ + len + 1);
-      slice->data_ = fdb_realloc(slice->data_, slice->capacity_);
+      slice->data_ = (char*)fdb_realloc(slice->data_, slice->capacity_);
     }
     memcpy(slice->data_ + slice->start_ + slice->length_, str, len);
     slice->length_ += len;
@@ -103,7 +103,7 @@ void fdb_slice_string_push_front(fdb_slice_t* slice, const char* str, size_t len
             size_t old_start = slice->start_;
             size_t old_length = slice->length_;
             slice->start_ = 8;
-            slice->data_ = fdb_realloc(slice->data_, slice->capacity_);
+            slice->data_ = (char*)fdb_realloc(slice->data_, slice->capacity_);
             memmove(slice->data_ + slice->start_ + len, slice->data_ + old_start, old_length);
             memcpy(slice->data_ + slice->start_, str, len);
             slice->length_ += len;

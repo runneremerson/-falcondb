@@ -1,11 +1,15 @@
+#include "fdb_types.h"
 #include "fdb_context.h"
 #include "fdb_malloc.h"
 
-#include <rocksdb/c.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+
+#ifdef __cplusplus
+extern "C" { 
+#endif
 
 
 fdb_context_t* fdb_context_create(const char* name, size_t write_buffer_size, size_t cache_size, size_t num_slots){
@@ -47,6 +51,7 @@ fdb_context_t* fdb_context_create(const char* name, size_t write_buffer_size, si
     rocksdb_column_family_handle_t **column_family_handles = (rocksdb_column_family_handle_t**)malloc(num_slots * sizeof(rocksdb_column_family_handle_t*));
     
     char* rocksdb_error = NULL;
+    fdb_slot_t** slots = NULL;
     context->db_ = rocksdb_open_column_families(context->options_, 
                                                 name, 
                                                 num_column_families, 
@@ -63,7 +68,7 @@ fdb_context_t* fdb_context_create(const char* name, size_t write_buffer_size, si
         goto err;
     }
 
-    fdb_slot_t** slots = (fdb_slot_t**)fdb_malloc(num_slots * sizeof(fdb_slot_t*)); 
+    slots = (fdb_slot_t**)fdb_malloc(num_slots * sizeof(fdb_slot_t*)); 
     for(size_t i=0; i<num_slots; ++i){
         slots[i] = (fdb_slot_t*)fdb_malloc(sizeof(fdb_slot_t));
         slots[i]->id_ = (uint64_t)i;
@@ -76,6 +81,7 @@ fdb_context_t* fdb_context_create(const char* name, size_t write_buffer_size, si
     fdb_free(column_family_options);
     fdb_free(column_family_handles);
     return context;
+
 err:
     if(context->db_!=NULL){
         rocksdb_close(context->db_);
@@ -152,3 +158,7 @@ void fdb_slot_writebatch_commit(fdb_context_t* context, fdb_slot_t* slot, char**
     rocksdb_mutex_unlock(slot->mutex_);
     rocksdb_writeoptions_destroy(writeoptions);
 }
+
+#ifdef __cplusplus
+}
+#endif

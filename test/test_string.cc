@@ -1,6 +1,7 @@
 #include <falcondb/fdb_slice.h>
 #include <falcondb/fdb_context.h>
 #include <falcondb/fdb_define.h>
+#include <falcondb/fdb_types.h>
 #include <falcondb/t_string.h>
 #include <assert.h>
 #include <stdio.h>

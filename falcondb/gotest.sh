@@ -14,8 +14,8 @@ FALCONDB_IN_PATH=$BASE_DIR/falcondb
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ROCKSDB_LD_PATH:$SNAPPY_LD_PATH
 
-export CGO_CFLAGS="-std=gnu99 -W -I$FALCONDB_IN_PATH  -I$ROCKSDB_IN_PATH -DUSE_TCMALLOC=1 -DUSE_INT=1"
-export CGO_LDFLAGS="-static-libgcc -L$ROCKSDB_LD_PATH -L$SNAPPY_LD_PATH -lrocksdb  -lsnappy -ltcmalloc -lm -lpthread"
+export CGO_CXXFLAGS="-g  -fpermissive -std=c++11 -I$FALCONDB_IN_PATH  -I$ROCKSDB_IN_PATH -DUSE_TCMALLOC=1 -DUSE_INT=1"
+export CGO_LDFLAGS="-static-libgcc  -static-libstdc++ -L$ROCKSDB_LD_PATH -L$SNAPPY_LD_PATH -lrocksdb  -lsnappy -ltcmalloc -lm -lpthread"
 
 cd ./falcondb
 

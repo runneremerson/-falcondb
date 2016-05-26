@@ -25,7 +25,7 @@ uint64_t time_ms(){
 }
 
 void printbuf(const void *ptr, size_t length){
-    const char* buf = ptr;
+    const char* buf = (const char*)ptr;
     for(size_t i=0; i<length; i++){
         uint8_t c = buf[i];
         if(c == 0){

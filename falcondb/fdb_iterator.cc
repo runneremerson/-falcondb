@@ -1,20 +1,12 @@
+#include "fdb_types.h"
 #include "fdb_iterator.h"
 #include "fdb_malloc.h"
 
 #include "util.h"
 
-#include <rocksdb/c.h>
 #include <string.h>
 #include <stdio.h>
 
-
-struct fdb_iterator_t {
-    fdb_slice_t *key_;
-    fdb_slice_t *end_;
-    int direction_;
-    uint64_t limit_;
-    rocksdb_iterator_t *iterator_;
-};
 
 fdb_iterator_t* fdb_iterator_create(fdb_context_t* context, fdb_slot_t* slot,
                                     fdb_slice_t* key, fdb_slice_t* start,

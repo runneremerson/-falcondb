@@ -104,7 +104,7 @@ echo "ZLIB_PATH=$ZLIB_PATH" >> build_config.mk
 
 echo "CFLAGS=" >> build_config.mk
 #echo "CFLAGS = -DNDEBUG -D__STDC_FORMAT_MACROS -Wall -O2 -Wno-sign-compare" >> build_config.mk
-echo "CFLAGS = -Wall -O0 -g -Wno-sign-compare" >> build_config.mk
+echo "CFLAGS = -Wall -O0 -g -Wno-sign-compare -fpermissive -std=c++11 -DUSE_TCMALLOC -DUSE_INT" >> build_config.mk
 echo "CFLAGS += ${PLATFORM_CFLAGS}" >> build_config.mk
 echo "CFLAGS += -I $ROCKSDB_PATH/include" >> build_config.mk
 

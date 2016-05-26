@@ -1,4 +1,5 @@
 #include <falcondb/fdb_object.h>
+#include <falcondb/fdb_types.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>

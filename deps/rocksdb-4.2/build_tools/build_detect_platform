@@ -241,17 +241,6 @@ EOF
       fi
     fi
 
-    # Test whether zlib library is installed
-    $CXX $CFLAGS $COMMON_FLAGS $ROCKSDB_DEPS_CFLAGS -x c++ - -o /dev/null 2>/dev/null  <<EOF
-      #include <zlib.h>
-      int main() {}
-EOF
-    if [ "$?" = 0 ]; then
-        COMMON_FLAGS="$COMMON_FLAGS -DZLIB"
-        PLATFORM_LDFLAGS="$PLATFORM_LDFLAGS -lz"
-        JAVA_LDFLAGS="$JAVA_LDFLAGS -lz"
-    fi
-
     # Test whether bzip library is installed
     $CXX $CFLAGS $COMMON_FLAGS -x c++ - -o /dev/null 2>/dev/null  <<EOF
       #include <bzlib.h>

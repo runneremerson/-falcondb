@@ -4,8 +4,8 @@ include build_config.mk
 
 
 all:
-#	cd "${ROCKSDB_PATH}"; ${MAKE} static_lib -j 4 
-	cd "${ROCKSDB_PATH}"; ${MAKE} shared_lib
+	cd "${ROCKSDB_PATH}"; ${MAKE} static_lib -j 4 
+	#cd "${ROCKSDB_PATH}"; ${MAKE} shared_lib
 	cd falcondb/; ${MAKE}
 test:
 	cd test/; ${MAKE}

@@ -6,36 +6,6 @@
 
 
 
-struct fdb_val_node_t {
-    struct fdb_val_node_t* next_;
-    struct fdb_val_node_t* prev_;
-    union val_t {
-        double      dval_;
-        uint64_t    uval_;
-        void*       vval_;
-    } val_;
-    int retval_;
-};
-
-struct fdb_list_t {
-    struct fdb_val_node_t *head_;
-    struct fdb_val_node_t *tail_;
-    size_t length_;
-};
-
-struct fdb_array_t {
-    struct fdb_val_node_t **array_;
-    size_t length_;
-    size_t capacity_;
-};
-
-struct fdb_iter_t {
-    struct fdb_val_node_t *curr_;
-    size_t length_;
-    size_t now_; 
-};
-
-
 //node
 typedef struct fdb_val_node_t           fdb_val_node_t;
 

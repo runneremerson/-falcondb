@@ -1,6 +1,7 @@
 #include "t_hash.h"
 #include "t_keys.h"
 
+#include "fdb_types.h"
 #include "fdb_iterator.h"
 #include "fdb_define.h"
 #include "fdb_slice.h"
@@ -444,15 +445,14 @@ int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_sli
 
     int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval != FDB_OK){
-        goto end;
+        return retval;
     }
 
     int ret = hset_one(context, slot, key, field, value); 
     if(ret >=0){
         if(ret > 0){
             if(hash_incr_size(context, slot, key, 1) < 0){
-                retval = FDB_ERR;
-                goto end;
+                return FDB_ERR;
             }
         }
         char *errptr = NULL;
@@ -460,15 +460,13 @@ int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_sli
         if(errptr != NULL){
             fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", __func__, errptr);
             rocksdb_free(errptr);
-            retval = FDB_ERR;
-            goto  end;
+            return FDB_ERR;
         }
         retval = FDB_OK;
     }else{
         retval = FDB_ERR;
     }
 
-end:
     return retval;
 }
 
@@ -527,32 +525,27 @@ int hash_length(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint
 int hash_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field){ 
     int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval != FDB_OK){
-        goto end;
+        return retval;
     }
     int ret = hdel_one(context, slot, key, field);
     if(ret >=0){
         if(ret > 0){
             if(hash_incr_size(context, slot, key, -1) < 0){
-                retval = FDB_ERR;
-                goto end;
+                return FDB_ERR;
             }
             char *errptr = NULL;
             fdb_slot_writebatch_commit(context, slot, &errptr);
             if(errptr != NULL){
                 fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", errptr, __func__);
                 rocksdb_free(errptr);
-                retval = FDB_ERR;
-                goto  end;
+                return FDB_ERR;
             }
-            retval = FDB_OK;
-            goto end;
+            return FDB_OK;
         }
         retval = FDB_OK_NOT_EXIST;
     }else{
         retval = FDB_ERR;
     }
-
-end:
     return retval;
 }
 
