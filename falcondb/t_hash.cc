@@ -506,11 +506,13 @@ end:
 }
 
 
-int hash_length(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint64_t* length){
+int hash_length(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* length){
     int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval == FDB_OK){
-        int ret =  hlen_one(context, slot, key, length);
+        uint64_t len = 0;
+        int ret =  hlen_one(context, slot, key, &len);
         if(ret == 1){
+            *length = (int64_t)len;
             retval = FDB_OK;
         }else if(ret == 0){
             retval = FDB_OK_NOT_EXIST;
