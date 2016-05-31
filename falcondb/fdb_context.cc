@@ -85,7 +85,7 @@ fdb_context_t* fdb_context_create(const char* name, size_t write_buffer_size, si
         slots[i] = (fdb_slot_t*)fdb_malloc(sizeof(fdb_slot_t));
         slots[i]->id_ = (uint64_t)i;
         slots[i]->handle_ = column_family_handles[i];
-        slots[i]->keys_cache_ = rocksdb_cache_create_lru(1024*1024*100);
+        slots[i]->keys_cache_ = rocksdb_cache_create_lru(1024*1024*20);
         slots[i]->batch_ = rocksdb_writebatch_create();
         slots[i]->mutex_ = rocksdb_mutex_create();
     }
@@ -113,7 +113,6 @@ err:
 
 void fdb_context_destroy(fdb_context_t* context){
     if(context!=NULL){
-
         if(context->slots_!=NULL){
             size_t num_slots = context->num_slots_;
             fdb_slot_t **slots = (fdb_slot_t**)context->slots_;
@@ -138,11 +137,28 @@ void fdb_context_destroy(fdb_context_t* context){
 }
 
 void fdb_context_drop_slot(fdb_context_t* context, fdb_slot_t* slot){
-    char *errptr = NULL;
-    rocksdb_drop_column_family(context->db_, slot->handle_, &errptr);
-    if(errptr!=NULL){ 
-        fprintf(stderr, "%s rocksdb_drop_column_family fail %s.\n", __func__, errptr);
-        rocksdb_free(errptr);
+    char *rocksdb_error = NULL;
+    rocksdb_drop_column_family(context->db_, slot->handle_, &rocksdb_error);
+    if(rocksdb_error!=NULL){ 
+        fprintf(stderr, "%s rocksdb_drop_column_family fail %s.\n", __func__, rocksdb_error);
+        rocksdb_free(rocksdb_error);
+    }else{
+        rocksdb_column_family_handle_destroy(slot->handle_);
+        slot->handle_ = NULL;
+        rocksdb_cache_destroy(slot->keys_cache_);
+    }
+}
+
+void fdb_context_create_slot(fdb_context_t* context, fdb_slot_t* slot){
+    char *rocksdb_error = NULL;
+    char buff[64] = {0};
+    sprintf(buff, "slot-%lu", (size_t)slot->id_);
+    slot->handle_ = rocksdb_create_column_family(context->db_, context->options_, buff, &rocksdb_error);
+    if(rocksdb_error!=NULL){
+        fprintf(stderr, "%s rocksdb_create_column_family fail %s.\n", __func__, rocksdb_error);
+        rocksdb_free(rocksdb_error); 
+    }else{ 
+        slot->keys_cache_ = rocksdb_cache_create_lru(1024*1024*20);
     }
 }
 

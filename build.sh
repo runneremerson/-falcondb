@@ -61,18 +61,6 @@ esac
 DIR=`pwd`
 
 cd "$DIR"
-cd $ZLIB_PATH
-if [ ! -f Makefile ]; then
-	echo ""
-	echo "##### building zlib... #####"
-	CFLAGS='-fPIC' ./configure --static 
-	# FUCK! zlib compilation doesn't work on some linux!
-	find . | xargs touch
-	make
-	echo "##### building zlib finished #####"
-	echo ""
-fi
-
 cd $SNAPPY_PATH
 if [ ! -f Makefile ]; then
 	echo ""
@@ -101,19 +89,12 @@ echo CXX=$CXX >> build_config.mk
 echo "MAKE=$MAKE" >> build_config.mk
 echo "ROCKSDB_PATH=$ROCKSDB_PATH" >> build_config.mk
 echo "SNAPPY_PATH=$SNAPPY_PATH" >> build_config.mk
-echo "ZLIB_PATH=$ZLIB_PATH" >> build_config.mk
 
-echo "CFLAGS=" >> build_config.mk
+echo "CXXFLAGS=" >> build_config.mk
 #echo "CFLAGS = -DNDEBUG -D__STDC_FORMAT_MACROS -Wall -O2 -Wno-sign-compare" >> build_config.mk
-echo "CFLAGS = -Wall -O0 -g -Wno-sign-compare -fpermissive -std=c++11 -DUSE_TCMALLOC -DUSE_INT" >> build_config.mk
-echo "CFLAGS += ${PLATFORM_CFLAGS}" >> build_config.mk
-echo "CFLAGS += -I $ROCKSDB_PATH/include" >> build_config.mk
-
-echo "CLIBS=" >> build_config.mk
-echo "CLIBS += ${PLATFORM_CLIBS} " >> build_config.mk
-echo "CLIBS += $ROCKSDB_PATH/librocksdb.a " >> build_config.mk
-echo "CLIBS += $SNAPPY_PATH/.libs/libsnappy.a " >> build_config.mk
-echo "CLIBS += $ZLIB_PATH/libz.a " >> build_config.mk
+echo "CXXFLAGS = -Wall -O0 -g -Wno-sign-compare -fpermissive -std=c++11 -DUSE_TCMALLOC -DUSE_INT" >> build_config.mk
+echo "CXXFLAGS += ${PLATFORM_CFLAGS}" >> build_config.mk
+echo "CXXFLAGS += -I $ROCKSDB_PATH/include" >> build_config.mk
 
 
 
@@ -121,6 +102,9 @@ if test -z "$TMPDIR"; then
     TMPDIR=/tmp
 fi
 
+
+echo "CLIBS=" >> build_config.mk
+echo "CLIBS += ${PLATFORM_CLIBS} " >> build_config.mk
 g++ -x c++ - -o $TMPDIR/falcondb_build_test.$$ 2>/dev/null <<EOF
 	#include <gperftools/tcmalloc.h>
 	int main() {}
@@ -128,6 +112,11 @@ EOF
 if [ "$?" = 0 ]; then
 	echo "CLIBS += -ltcmalloc" >> build_config.mk
 fi
+
+echo "CLIBS += -lrocksdb " >> build_config.mk
+echo "CLIBS += -lsnappy " >> build_config.mk
+echo "CLIBS += -L$ROCKSDB_PATH" >> build_config.mk
+echo "CLIBS += -L$SNAPPY_PATH/.libs" >> build_config.mk
 
 
 rm -f $ROCKSDB_PATH/deps.mk

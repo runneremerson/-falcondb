@@ -18,7 +18,7 @@
 
 static int hget_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t** value); 
 
-static int hlen_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint64_t* length);
+static int hget_len(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint64_t* length);
 
 static int hset_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value); 
 
@@ -34,38 +34,36 @@ void encode_hsize_key(const char* key, size_t keylen, fdb_slice_t** pslice){
     fdb_slice_t* slice = fdb_slice_create(key, keylen);
     fdb_slice_uint8_push_front(slice, FDB_DATA_TYPE_HSIZE);
     *pslice = slice; 
-    fdb_incr_ref_count(slice);
-    fdb_slice_destroy(slice);
 }
 
 
-int decode_hsize_key(const char* fdbkey, size_t fdbkeylen, uint64_t* size){ 
-    int retval = 0;
+int decode_hsize_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pslice){ 
+    int ret = 0;
+    fdb_slice_t *slice_key = NULL;
     fdb_bytes_t* bytes = fdb_bytes_create(fdbkey, fdbkeylen);
 
     uint8_t type = 0;
     if(fdb_bytes_read_uint8(bytes, &type)==-1){
-        retval = -1;
+        ret = -1;
         goto end;
     }
     if(type != FDB_DATA_TYPE_HSIZE){
-        retval = -1;
+        ret = -1;
         goto end;
     }
-    if(fdb_bytes_skip(bytes, 1)==-1){
-        retval = -1;
-        goto end;
-    }
-    if(fdb_bytes_read_uint64(bytes, size)==-1){
-        retval = -1;
+    if(fdb_bytes_read_slice_len_left(bytes, &slice_key)==-1){
+        ret = -1;
         goto end; 
     }
-    retval = 0;
+    *pslice = slice_key;
+    fdb_incr_ref_count(slice_key);
+    ret = 0;
 
 
 end:
     fdb_bytes_destroy(bytes);
-    return retval;
+    fdb_slice_destroy(slice_key);
+    return ret;
 }
 
 void encode_hash_key(const char* key, size_t keylen, const char* field, size_t fieldlen, fdb_slice_t** pslice){ 
@@ -75,11 +73,9 @@ void encode_hash_key(const char* key, size_t keylen, const char* field, size_t f
     fdb_slice_uint8_push_back(slice, '=');
     fdb_slice_string_push_back(slice, field, fieldlen);
     *pslice = slice;
-    fdb_incr_ref_count(slice);
-    fdb_slice_destroy(slice);
 }
 
-int decode_hash_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t **pslice_key, fdb_slice_t **pslice_field){
+int decode_hash_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t **pkey, fdb_slice_t **pfield){
     int ret = 0;
     fdb_slice_t *slice_key = NULL, *slice_field = NULL;
     fdb_bytes_t *bytes = fdb_bytes_create(fdbkey, fdbkeylen);
@@ -110,8 +106,8 @@ int decode_hash_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t **pslice_k
         ret = -1;
         goto end;
     }
-    *pslice_key = slice_key;
-    *pslice_field = slice_field;
+    *pkey = slice_key;
+    *pfield = slice_field;
     fdb_incr_ref_count(slice_key);
     fdb_incr_ref_count(slice_field);
     ret = 0;
@@ -156,7 +152,7 @@ end:
     return ret;
 }
 
-static int hlen_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint64_t* length){ 
+static int hget_len(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint64_t* length){ 
     char *val = NULL, *errptr = NULL;
     size_t vallen = 0;
 
@@ -275,7 +271,7 @@ static int hdel_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
 
 static int hash_incr_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t by){  
   uint64_t length = 0;
-  int ret = hlen_one(context, slot, key, &length);
+  int ret = hget_len(context, slot, key, &length);
   if(ret!=0 && ret != 1){
     return -1;
   }
@@ -510,7 +506,7 @@ int hash_length(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int6
     int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval == FDB_OK){
         uint64_t len = 0;
-        int ret =  hlen_one(context, slot, key, &len);
+        int ret =  hget_len(context, slot, key, &len);
         if(ret == 1){
             *length = (int64_t)len;
             retval = FDB_OK;

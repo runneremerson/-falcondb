@@ -5,7 +5,7 @@
 #include "fdb_context.h"
 #include "fdb_object.h"
 
-#include <stdint.h>
+
 
 
 void encode_hsize_key(const char* key, size_t keylen, fdb_slice_t** pslice);

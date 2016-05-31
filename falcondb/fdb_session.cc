@@ -98,6 +98,7 @@ static fdb_slot_t* get_slot(fdb_context_t* context, uint64_t id){
 void fdb_drop_slot(fdb_context_t* context, uint64_t id){
     fdb_slot_t* slot = get_slot(context, id);
     fdb_context_drop_slot(context, slot);
+    fdb_context_create_slot(context, slot);
 }
 
 

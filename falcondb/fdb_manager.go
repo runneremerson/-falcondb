@@ -62,7 +62,7 @@ func (flock *FdbLock) release() {
 }
 
 type FdbSlot struct {
-	context  *C.fdb_context_t
+	fdb      *FdbManager
 	slot     uint64
 	readCnt  uint64
 	writeCnt uint64
@@ -71,11 +71,16 @@ type FdbSlot struct {
 }
 
 func (slot *FdbSlot) Drop() {
-	C.fdb_drop_slot(slot.context, C.uint64_t(slot.slot))
+	lock := slot.fetchSlotLock()
+	lock.acquire()
+	defer lock.release()
+
+	C.fdb_drop_slot(slot.fdb.ctx, C.uint64_t(slot.slot))
 }
 
 type FdbManager struct {
 	inited bool
+	ctx    *C.fdb_context_t
 	lock   FdbLock
 	slots  []*FdbSlot
 }
@@ -116,12 +121,12 @@ func (fdb *FdbManager) InitDB(file_path string, cache_size int, write_buffer_siz
 	csPath := C.CString(file_path)
 	defer C.free(unsafe.Pointer(csPath))
 
-	context := C.fdb_context_create(csPath, C.size_t(cache_size), C.size_t(write_buffer_size), C.size_t(num_slots))
+	fdb.ctx = C.fdb_context_create(csPath, C.size_t(cache_size), C.size_t(write_buffer_size), C.size_t(num_slots))
 
 	fdb.slots = make([]*FdbSlot, num_slots)
 	for i := 0; i < num_slots; i++ {
 		fdb.slots[i] = &FdbSlot{
-			context:  context,
+			fdb:      fdb,
 			slot:     uint64(i + 1),
 			readCnt:  uint64(0),
 			writeCnt: uint64(0),
@@ -134,6 +139,16 @@ func (fdb *FdbManager) InitDB(file_path string, cache_size int, write_buffer_siz
 	}
 	fdb.inited = true
 	return nil
+}
+
+func (fdb *FdbManager) CloseDB() {
+	fdb.lock.acquire()
+	defer fdb.lock.release()
+
+	if fdb.inited {
+		C.fdb_context_destroy(fdb.ctx)
+		fdb.inited = false
+	}
 }
 
 func (slot *FdbSlot) fetchKeysLock(key string) *FdbLock {
@@ -163,7 +178,7 @@ func (slot *FdbSlot) Get(key []byte) ([]byte, error) {
 	var pitem_val *C.fdb_item_t
 	pitem_val = (*C.fdb_item_t)(CNULL)
 
-	ret := C.fdb_get(slot.context, C.uint64_t(slot.slot), &item_key, &pitem_val)
+	ret := C.fdb_get(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &pitem_val)
 	iRet := int(ret)
 
 	defer C.destroy_fdb_item_array(pitem_val, C.size_t(1))
@@ -213,7 +228,7 @@ func (slot *FdbSlot) set(key []byte, val []byte, duration int64, opt int) (int64
 
 	ef := C.int(1)
 
-	ret := C.fdb_set(slot.context, C.uint64_t(slot.slot), &item_key, &item_val, C.int64_t(duration), C.int(opt), &ef)
+	ret := C.fdb_set(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_val, C.int64_t(duration), C.int(opt), &ef)
 
 	if int(ret) == 0 {
 		return int64(ef), nil
@@ -251,7 +266,7 @@ func (slot *FdbSlot) Del(keys ...[]byte) (int64, error) {
 		item_key.data_ = csKey
 		item_key.data_len_ = C.uint64_t(len(keys[i]))
 
-		ret := C.fdb_del(slot.context, C.uint64_t(slot.slot), &item_key)
+		ret := C.fdb_del(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key)
 		if int(ret) == 0 {
 			cnt++
 		}
@@ -283,7 +298,7 @@ func (slot *FdbSlot) mset(kvs []FdbPair, opt int) ([]error, error) {
 	}
 
 	rets := (*C.int)(CNULL)
-	ret := C.fdb_mset(slot.context, C.uint64_t(slot.slot), C.size_t(2*len(kvs)), (*C.fdb_item_t)(unsafe.Pointer(&item_kvs[0])), &rets, C.int(opt))
+	ret := C.fdb_mset(slot.fdb.ctx, C.uint64_t(slot.slot), C.size_t(2*len(kvs)), (*C.fdb_item_t)(unsafe.Pointer(&item_kvs[0])), &rets, C.int(opt))
 
 	var retvalues []error
 	if int(ret) == 0 {
@@ -316,7 +331,7 @@ func (slot *FdbSlot) MGet(keys ...[]byte) ([][]byte, error) {
 
 	item_vals := (*C.fdb_item_t)(CNULL)
 
-	ret := C.fdb_mget(slot.context, C.uint64_t(slot.slot), C.size_t(len(keys)), (*C.fdb_item_t)(unsafe.Pointer(&item_keys[0])), &item_vals)
+	ret := C.fdb_mget(slot.fdb.ctx, C.uint64_t(slot.slot), C.size_t(len(keys)), (*C.fdb_item_t)(unsafe.Pointer(&item_keys[0])), &item_vals)
 	defer C.destroy_fdb_item_array(item_vals, C.size_t(len(keys)))
 
 	if int(ret) == 0 {
