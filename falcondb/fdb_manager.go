@@ -402,20 +402,20 @@ func (slot *FdbSlot) ZAdd(key []byte, args ...FdbScore) (int64, error) {
 func (slot *FdbSlot) ZCard(key []byte) (int64, error) {
 	return 0, nil
 }
-func (slot *FdbSlot) ZScore(key []byte, member []byte) (int64, error) {
+func (slot *FdbSlot) ZScore(key []byte, member []byte) (float64, error) {
 	return 0, nil
 }
 func (slot *FdbSlot) ZRem(key []byte, members ...[]byte) (int64, error) {
 	return 0, nil
 }
 
-func (slot *FdbSlot) ZCount(key []byte, min int64, max int64) (int64, error) {
+func (slot *FdbSlot) ZCount(key []byte, min float64, max float64) (int64, error) {
 	return 0, nil
 }
 func (slot *FdbSlot) ZRemRangeByRank(key []byte, start int, stop int) (int64, error) {
 	return 0, nil
 }
-func (slot *FdbSlot) ZRemRangeByScore(key []byte, min int64, max int64) (int64, error) {
+func (slot *FdbSlot) ZRemRangeByScore(key []byte, min float64, max float64) (int64, error) {
 	return 0, nil
 }
 
@@ -426,7 +426,12 @@ func (slot *FdbSlot) ZRemRangeByLex(key []byte, min []byte, max []byte, rangeTyp
 func (slot *FdbSlot) ZLexCount(key []byte, min []byte, max []byte, rangeType uint8) (int64, error) {
 	return 0, nil
 }
+
 func (slot *FdbSlot) ZRange(key []byte, start int, stop int) ([]FdbScore, error) {
+	return nil, nil
+}
+
+func (slot *FdbSlot) ZRevRange(key []byte, start int, stop int) ([]FdbScore, error) {
 	return nil, nil
 }
 
@@ -437,7 +442,7 @@ func (slot *FdbSlot) ZRevRank(key []byte, member []byte) (int64, error) {
 	return 0, nil
 }
 
-func (slot *FdbSlot) ZIncrBy(key []byte, delta int64, member []byte) (int64, error) {
+func (slot *FdbSlot) ZIncrBy(key []byte, delta float64, member []byte) (float64, error) {
 	return 0, nil
 }
 
