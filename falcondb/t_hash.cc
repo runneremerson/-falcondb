@@ -106,10 +106,14 @@ int decode_hash_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t **pkey, fd
         ret = -1;
         goto end;
     }
-    *pkey = slice_key;
-    *pfield = slice_field;
-    fdb_incr_ref_count(slice_key);
-    fdb_incr_ref_count(slice_field);
+    if(pkey!=NULL){
+        *pkey = slice_key; 
+        fdb_incr_ref_count(slice_key);
+    }
+    if(pfield!=NULL){
+        *pfield = slice_field;
+        fdb_incr_ref_count(slice_field);
+    }
     ret = 0;
 
 end:
@@ -202,10 +206,10 @@ static int hset_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
         fprintf(stderr, "%s field too long!", __func__);
         return -1;
     }
-    int ret = 0;
     fdb_slice_t *slice_key = NULL;
     fdb_slice_t *slice_val = NULL;
-    if(hget_one(context, slot, key, field, &slice_val) == FDB_OK_NOT_EXIST){
+    int ret = hget_one(context, slot, key, field, &slice_val);
+    if(ret == 0){
         encode_hash_key(fdb_slice_data(key),
                         fdb_slice_length(key),
                         fdb_slice_data(field),
@@ -218,7 +222,7 @@ static int hset_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
                                 fdb_slice_data(value),
                                 fdb_slice_length(value));
         ret = 1;
-    }else{
+    }else if(ret == 1){
         encode_hash_key(fdb_slice_data(key),
                         fdb_slice_length(key),
                         fdb_slice_data(field),
@@ -231,6 +235,8 @@ static int hset_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
                                 fdb_slice_data(value),
                                 fdb_slice_length(value)); 
         ret = 0;
+    }else{
+        ret = -1;
     }
 
     fdb_slice_destroy(slice_key);
@@ -643,7 +649,7 @@ static int hash_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key,
       fdb_slice_string_push_back(slice_end, "\xff", strlen("\xff"));
     }
 
-    *piterator = fdb_iterator_create(context, slot, key, slice_start, slice_end, limit, FORWARD);
+    *piterator = fdb_iterator_create(context, slot, slice_start, slice_end, limit, FORWARD);
   }else{
     encode_hash_key(fdb_slice_data(key),
                     fdb_slice_length(key),
@@ -658,7 +664,7 @@ static int hash_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key,
                     fdb_slice_data(fend),
                     fdb_slice_length(fend),
                     &slice_end);
-    *piterator = fdb_iterator_create(context, slot, key, slice_start, slice_end, limit, BACKWARD);
+    *piterator = fdb_iterator_create(context, slot, slice_start, slice_end, limit, BACKWARD);
   }
 
   fdb_slice_destroy(slice_start);

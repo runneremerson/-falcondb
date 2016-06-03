@@ -29,7 +29,14 @@ static int zget_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
 
 static int zget_len(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint64_t* length);
 
-static int zset_incr_size(fdb_context_t* context, fdb_slice_t* key, int64_t by);
+static int zset_incr_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t by);
+
+static int zset_range(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint64_t offset, uint64_t limit,
+                      int reverse, fdb_iterator_t** piterator);
+
+static int zset_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, double sstart, 
+                     double send, uint64_t limit, int reverse, fdb_iterator_t** piterator);
+
 
 void encode_zsize_key(const char* key, size_t keylen, fdb_slice_t** pslice){
     fdb_slice_t* slice = fdb_slice_create(key, keylen);
@@ -157,11 +164,17 @@ int decode_zscore_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pkey, 
         ret = -1;
         goto end;
     }
-    *pkey = key_slice;
-    *pmember = member_slice;
-    *pscore = lex_to_double(lex_score);
-    fdb_incr_ref_count(key_slice);
-    fdb_incr_ref_count(member_slice);
+    if(pkey!=NULL){
+        *pkey = key_slice;
+        fdb_incr_ref_count(key_slice);
+    }
+    if(pmember!=NULL){
+        *pmember = member_slice;
+        fdb_incr_ref_count(member_slice); 
+    }
+    if(pscore!=NULL){
+        *pscore = lex_to_double(lex_score); 
+    }
     ret = 0;
 
 end:
@@ -175,15 +188,15 @@ end:
 static int zset_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, double score){
  
     if(fdb_slice_length(key)==0 || fdb_slice_length(member)==0){
-        fprintf(stderr, "empty key or member!");
+        fprintf(stderr, "%s empty key or member!\n", __func__);
         return -1;
     }
     if(fdb_slice_length(key) > FDB_DATA_TYPE_KEY_LEN_MAX){
-        fprintf(stderr, "key too long!");
+        fprintf(stderr, "%s key too long!\n", __func__);
         return -1;
     }
     if(fdb_slice_length(member) > FDB_DATA_TYPE_KEY_LEN_MAX){
-        fprintf(stderr, "key too long!");
+        fprintf(stderr, "%s key too long!\n", __func__);
         return -1;
     } 
     double old_score = 0.0;
@@ -242,9 +255,9 @@ static int zget_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
 
     int ret = 0;
     if(errptr!=NULL){
-        fprintf(stderr, "rocksdb_get_cf fail %s.\n", errptr);
+        fprintf(stderr, "%s rocksdb_get_cf fail %s.\n", __func__, errptr);
         rocksdb_free(errptr);
-        ret = FDB_ERR;
+        ret = -1;
         goto end;
     }
     if(val != NULL){
@@ -252,9 +265,9 @@ static int zget_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
         uint64_t lex_score = rocksdb_decode_fixed64(val);
         *pscore = lex_to_double(lex_score);
         rocksdb_free(val);
-        ret = FDB_OK;
+        ret = 1;
     }else{
-        ret = FDB_OK_NOT_EXIST;
+        ret = 0;
     }
 
 end:
@@ -263,11 +276,11 @@ end:
 
 static int zrem_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member){
     if(fdb_slice_length(key) > FDB_DATA_TYPE_KEY_LEN_MAX){
-        fprintf(stderr, "name too long!");
+        fprintf(stderr, "%s name too long!\n", __func__);
         return -1; 
     }
     if(fdb_slice_length(member) > FDB_DATA_TYPE_KEY_LEN_MAX){
-        fprintf(stderr, "member too long!");
+        fprintf(stderr, "%s member too long!\n", __func__);
         return -1;
     }
     double old_score = 0;
@@ -311,7 +324,7 @@ static int zget_len(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
 
     int ret = 0;
     if(errptr != NULL){
-        fprintf(stderr, "rocksdb_get_cf fail %s.\n", errptr);
+        fprintf(stderr, "%s rocksdb_get_cf fail %s.\n", __func__, errptr);
         rocksdb_free(errptr);
         ret = -1;
         goto end;
@@ -329,10 +342,289 @@ end:
     return ret;
 }
 
-static int zset_incr_size(fdb_context_t* context, fdb_slice_t* key, int64_t by){
-   return 0; 
+static int zset_incr_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t by){
+    uint64_t length = 0;
+    int ret = zget_len(context, slot, key, &length);
+    if(ret < 0) return -1;
+
+    int64_t size = (int64_t)length;
+    size += by;
+
+    fdb_slice_t *slice_key = NULL;
+    encode_zsize_key(fdb_slice_data(key),
+                     fdb_slice_length(key),
+                     &slice_key);
+    if(size <= 0){
+        fdb_slot_writebatch_delete(slot, fdb_slice_data(slice_key), fdb_slice_length(slice_key));
+    }else{
+        length = size;
+        char buff[sizeof(uint64_t)] = {0};
+        rocksdb_encode_fixed64(buff, length);
+        fdb_slot_writebatch_put(slot, fdb_slice_data(slice_key), fdb_slice_length(slice_key), buff, sizeof(uint64_t));
+    }
+    fdb_slice_destroy(slice_key);
+    return 0;
 }
 
+static int zset_range(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint64_t offset, uint64_t limit,
+                      int reverse, fdb_iterator_t** piterator){
+
+    if((offset+limit) > limit){
+        limit = offset + limit;
+    }
+    fdb_slice_t *key_start = NULL, *key_end = NULL;
+    if(reverse == 0){
+        double sstart = FDB_SCORE_MIN, send = FDB_SCORE_MAX;
+        encode_zscore_key(fdb_slice_data(key),
+                          fdb_slice_length(key),
+                          NULL,
+                          0,
+                          sstart,
+                          &key_start);
+        encode_zscore_key(fdb_slice_data(key),
+                          fdb_slice_length(key),
+                          "\xff",
+                          strlen("\xff"),
+                          send,
+                          &key_end);
+        *piterator = fdb_iterator_create(context, slot, key_start, key_end, limit, FORWARD);  
+    }else{
+        double sstart = FDB_SCORE_MAX, send = FDB_SCORE_MIN;
+        encode_zscore_key(fdb_slice_data(key),
+                          fdb_slice_length(key),
+                          "\xff",
+                          strlen("\xff"),
+                          sstart,
+                          &key_start);
+        encode_zscore_key(fdb_slice_data(key),
+                          fdb_slice_length(key),
+                          NULL,
+                          0,
+                          send,
+                          &key_end);
+        *piterator = fdb_iterator_create(context, slot, key_start, key_end, limit, BACKWARD); 
+    }
+    fdb_slice_destroy(key_start);
+    fdb_slice_destroy(key_end);
+
+    if(offset>0){
+        if(fdb_iterator_skip(*piterator, offset)<0){
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static int zset_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, double sstart, 
+                     double send, uint64_t limit, int reverse, fdb_iterator_t** piterator){
+    double score = 0.0;
+    if(fdb_slice_length(member)==0 || zget_one(context, slot, key, member, &score)!=FDB_OK){
+        score = sstart;
+    }
+    fdb_slice_t *key_start = NULL, *key_end = NULL;
+    if(reverse == 0){
+         encode_zscore_key(fdb_slice_data(key),
+                          fdb_slice_length(key),
+                          NULL,
+                          0,
+                          score,
+                          &key_start);
+        encode_zscore_key(fdb_slice_data(key),
+                          fdb_slice_length(key),
+                          "\xff",
+                          strlen("\xff"),
+                          send,
+                          &key_end);
+        *piterator = fdb_iterator_create(context, slot, key_start, key_end, limit, FORWARD);   
+    }else{
+        if(fdb_slice_length(member)==0){
+            encode_zscore_key(fdb_slice_data(key),
+                              fdb_slice_length(key),
+                              "\xff",
+                              strlen("\xff"),
+                              score,
+                              &key_start);
+        }else{
+            encode_zscore_key(fdb_slice_data(key),
+                              fdb_slice_length(key),
+                              fdb_slice_data(member),
+                              fdb_slice_length(member),
+                              score,
+                              &key_start); 
+        }
+        encode_zscore_key(fdb_slice_data(key),
+                          fdb_slice_length(key),
+                          NULL,
+                          0,
+                          send,
+                          &key_end);
+
+        *piterator = fdb_iterator_create(context, slot, key_start, key_end, limit, BACKWARD);    
+    }
+    fdb_slice_destroy(key_start);
+    fdb_slice_destroy(key_end);
+    return 0;
+}
+
+
 int zset_add(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, double score){
-  return 0;
+    int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_ZSET);
+    if(retval != FDB_OK){
+        return retval;
+    }
+
+    int ret = zset_one(context, slot, key, member, score);
+    if(ret >= 0){
+        if(ret > 0){
+            if(zset_incr_size(context, slot, key, ret) == -1){
+                return FDB_ERR;
+            }
+        }
+        char *errptr = NULL;
+        fdb_slot_writebatch_commit(context, slot, &errptr);
+        if(errptr != NULL){
+            fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", __func__, errptr);
+            rocksdb_free(errptr);
+            return FDB_ERR;
+        }
+        retval = FDB_OK;
+    }else{
+        retval = FDB_ERR;
+    }
+
+    return retval;
+}
+
+int zset_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member){
+    int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_ZSET);
+    if(retval != FDB_OK){
+        return retval;
+    }
+    int ret = zrem_one(context, slot, key, member);
+    if(ret >= 0){
+        if(ret > 0){
+            if(zset_incr_size(context, slot, key, -ret)==-1){
+                return FDB_ERR;
+            } 
+        }
+        char *errptr = NULL;
+        fdb_slot_writebatch_commit(context, slot, &errptr);
+        if(errptr != NULL){
+            fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", __func__, errptr);
+            rocksdb_free(errptr);
+            return FDB_ERR;
+        }
+        retval = FDB_OK; 
+    }else{
+        retval = FDB_ERR;
+    }
+    return retval; 
+}
+
+int zset_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* size){
+    int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_ZSET);
+    if(retval != FDB_OK){
+        return retval;
+    }
+
+    uint64_t length = 0;
+    int ret = zget_len(context, slot, key, &length);
+    if(ret < 0){
+        retval = FDB_ERR;
+    }else if(ret >0){
+        retval = FDB_OK;
+        *size = (int64_t)length; 
+    }
+    return retval;    
+}
+
+int zset_score(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, double* pscore){
+    int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_ZSET);
+    if(retval != FDB_OK){
+        return retval;
+    }
+
+    int ret = zget_one(context, slot, key, member, pscore);
+    if(ret ==1){
+        retval = FDB_OK;
+    }else if(ret == 0){
+        retval = FDB_OK_NOT_EXIST;
+    }else{
+        retval = FDB_ERR;
+    }
+    return retval;
+}
+
+int zset_incr(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, double init, double by, double* pscore){
+    int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_ZSET);
+    if(retval != FDB_OK){
+        return retval;
+    }
+    double score = init;
+    int ret = zget_one(context, slot, key, member, &score);
+    if(ret >=0){
+        score += by;
+        ret = zset_one(context, slot, key, member, score);
+        if(ret >= 0){
+            if(ret > 0){
+                if(zset_incr_size(context, slot, key, ret) == -1){
+                    return FDB_ERR;
+                }
+            }
+            char *errptr = NULL;
+            fdb_slot_writebatch_commit(context, slot, &errptr);
+            if(errptr != NULL){
+                fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", __func__, errptr);
+                rocksdb_free(errptr);
+                return FDB_ERR;
+            }
+            retval = FDB_OK;
+        }else{
+            retval = FDB_ERR;
+        } 
+    }else {
+        retval = FDB_ERR;
+    }
+    return retval;
+}
+
+int zset_rank(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, int reverse, int64_t* rank){
+    int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_ZSET);
+    if(retval != FDB_OK){
+        return retval;
+    }
+    fdb_iterator_t *ziterator = NULL;
+    zset_range(context, slot, key, 0, INT32_MAX, reverse, &ziterator);
+
+    fdb_slice_t *member_slice = NULL;
+    int64_t _rank = 0;
+    while(1){
+        if(!fdb_iterator_valid(ziterator)){
+            retval = FDB_OK_NOT_EXIST;
+            break;
+        }
+        size_t klen = 0;
+        const char* key = fdb_iterator_key_raw(ziterator, &klen);
+        if(decode_zscore_key(key, klen, NULL, &member_slice, NULL)<0){
+            retval = FDB_OK_NOT_EXIST;
+            break;
+        }
+        if(compare_with_length(fdb_slice_data(member), fdb_slice_length(member), fdb_slice_data(member_slice), fdb_slice_length(member_slice))==0){
+            retval = FDB_OK;
+            *rank = _rank;
+            break;
+        } 
+        fdb_slice_destroy(member_slice);
+        if(fdb_iterator_next(ziterator)){
+            retval = FDB_OK_NOT_EXIST;
+            break;
+        }
+        ++_rank;
+    }
+    fdb_iterator_destroy(ziterator);
+    return retval;
+}
+
+int zset_count(fdb_context_t* context, fdb_slot_t* slot, double sstart, double send, int64_t* count){
+    return 0;    
 }

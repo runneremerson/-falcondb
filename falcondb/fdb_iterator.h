@@ -14,14 +14,14 @@ enum {
 
 typedef struct fdb_iterator_t       fdb_iterator_t;
 
-fdb_iterator_t* fdb_iterator_create(fdb_context_t* context, fdb_slot_t* slot,
-                                    fdb_slice_t* key, fdb_slice_t* start,
-                                    fdb_slice_t* end, uint64_t limit,
-                                    int direction);
+fdb_iterator_t* fdb_iterator_create(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* start,
+                                    fdb_slice_t* end, uint64_t limit, int direction);
 
 void fdb_iterator_destroy(fdb_iterator_t* iterator);
 
 int fdb_iterator_skip(fdb_iterator_t* iterator, uint64_t offset);
+
+int fdb_iterator_valid(fdb_iterator_t* iterator);
 
 int fdb_iterator_next(fdb_iterator_t* iterator);
 

@@ -8,13 +8,11 @@
 #include <stdio.h>
 
 
-fdb_iterator_t* fdb_iterator_create(fdb_context_t* context, fdb_slot_t* slot,
-                                    fdb_slice_t* key, fdb_slice_t* start,
-                                    fdb_slice_t* end, uint64_t limit,
-                                    int direction){
+fdb_iterator_t* fdb_iterator_create(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* start, 
+                                    fdb_slice_t* end, uint64_t limit, int direction){
     fdb_iterator_t *iterator = (fdb_iterator_t*)fdb_malloc(sizeof(fdb_iterator_t));
-    iterator->key_ = fdb_slice_create(fdb_slice_data(key), fdb_slice_length(key));
-    iterator->end_ = fdb_slice_create(fdb_slice_data(end), fdb_slice_length(end));
+    fdb_incr_ref_count(end);
+    iterator->end_ = end;
     iterator->direction_ = direction;
     iterator->limit_ = limit;
     rocksdb_readoptions_t *readoptions = rocksdb_readoptions_create();
@@ -44,7 +42,6 @@ fdb_iterator_t* fdb_iterator_create(fdb_context_t* context, fdb_slot_t* slot,
 
 void fdb_iterator_destroy(fdb_iterator_t* iterator){
     if(iterator!=NULL){
-        fdb_slice_destroy(iterator->key_);
         fdb_slice_destroy(iterator->end_);
         rocksdb_iter_destroy(iterator->iterator_);
     }
@@ -117,6 +114,10 @@ int fdb_iterator_skip(fdb_iterator_t* iterator, uint64_t offset){
 
 end:
     return ret;
+}
+
+int fdb_iterator_valid(const fdb_iterator_t* iterator){
+    return rocksdb_iter_valid(iterator->iterator_);
 }
 
 void fdb_iterator_val(const fdb_iterator_t* iterator, fdb_slice_t** pslice){

@@ -54,7 +54,6 @@ struct fdb_iter_t {
 };
 
 struct fdb_iterator_t {
-    struct fdb_slice_t *key_;
     struct fdb_slice_t *end_;
     int direction_;
     uint64_t limit_;
