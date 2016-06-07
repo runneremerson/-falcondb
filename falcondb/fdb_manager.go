@@ -409,13 +409,13 @@ func (slot *FdbSlot) ZRem(key []byte, members ...[]byte) (int64, error) {
 	return 0, nil
 }
 
-func (slot *FdbSlot) ZCount(key []byte, min float64, max float64) (int64, error) {
+func (slot *FdbSlot) ZCount(key []byte, min float64, max float64, rangeType uint8) (int64, error) {
 	return 0, nil
 }
 func (slot *FdbSlot) ZRemRangeByRank(key []byte, start int, stop int) (int64, error) {
 	return 0, nil
 }
-func (slot *FdbSlot) ZRemRangeByScore(key []byte, min float64, max float64) (int64, error) {
+func (slot *FdbSlot) ZRemRangeByScore(key []byte, min float64, max float64, rangeType uint8) (int64, error) {
 	return 0, nil
 }
 

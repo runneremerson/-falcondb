@@ -90,10 +90,6 @@ int decode_hash_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t **pkey, fd
         ret = -1;
         goto end;
     }
-    if(fdb_bytes_skip(bytes, 1)==-1){
-        ret = -1;
-        goto end;
-    }
     if(fdb_bytes_read_slice_len_uint8(bytes, &slice_key)==-1){
         ret = -1;
         goto end;
@@ -195,15 +191,15 @@ end:
 static int hset_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value){
 
     if(fdb_slice_length(key)==0 || fdb_slice_length(field)==0){
-        fprintf(stderr, "%s empty key or field!", __func__);
+        fprintf(stderr, "%s empty key or field!\n", __func__);
         return 0;
     }
     if(fdb_slice_length(key) > FDB_DATA_TYPE_KEY_LEN_MAX){
-        fprintf(stderr, "%s name too long!", __func__);
+        fprintf(stderr, "%s name too long!\n", __func__);
         return -1;
     }
     if(fdb_slice_length(field) > FDB_DATA_TYPE_KEY_LEN_MAX){
-        fprintf(stderr, "%s field too long!", __func__);
+        fprintf(stderr, "%s field too long!\n", __func__);
         return -1;
     }
     fdb_slice_t *slice_key = NULL;
@@ -247,11 +243,11 @@ static int hset_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
 
 static int hdel_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field){
     if(fdb_slice_length(key) > FDB_DATA_TYPE_KEY_LEN_MAX){
-        fprintf(stderr, "%s key too long!", __func__);
+        fprintf(stderr, "%s key too long!\n", __func__);
         return -1;
     }
     if(fdb_slice_length(field) > FDB_DATA_TYPE_KEY_LEN_MAX){
-        fprintf(stderr, "%s field too long!", __func__);
+        fprintf(stderr, "%s field too long!\n", __func__);
         return -1;
     }
 
@@ -337,10 +333,10 @@ int hash_getall(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_
             const char* rval = fdb_iterator_val_raw(iterator, &rvlen);
             fdb_slice_t* field = NULL;
             if(decode_hash_key(rkey, rklen, NULL, &field)==0){
-                fdb_val_node_t* knode = fdb_val_node_create();
-                knode->retval_ = FDB_OK;
-                knode->val_.vval_ = fdb_slice_create(rkey, rklen);
-                fdb_array_push_back(array, knode);
+                fdb_val_node_t* fnode = fdb_val_node_create();
+                fnode->retval_ = FDB_OK;
+                fnode->val_.vval_ = field;
+                fdb_array_push_back(array, fnode);
 
                 fdb_val_node_t* vnode = fdb_val_node_create();
                 vnode->retval_ = FDB_OK;
@@ -373,7 +369,7 @@ int hash_keys(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_ar
             if(decode_hash_key(rkey, rklen, NULL, &field)==0){
                 fdb_val_node_t* node = fdb_val_node_create();
                 node->retval_ = FDB_OK;
-                node->val_.vval_ = fdb_slice_create(rkey, rklen);
+                node->val_.vval_ = field;
                 fdb_array_push_back(array, node);
             } 
         }while(!fdb_iterator_next(iterator));
@@ -573,37 +569,39 @@ int hash_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_
 int hash_incr(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, int64_t init, int64_t by, int64_t* val){
     int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval == FDB_OK){
-        fdb_slice_t *slice_val = NULL;
-        int ret = hget_one(context, slot, key, field, &slice_val);
+        fdb_slice_t *slice_value = NULL;
+        int ret = hget_one(context, slot, key, field, &slice_value);
         if(ret == 1){ 
-            if(fdb_slice_length(slice_val) != sizeof(int64_t)){
+            if(fdb_slice_length(slice_value) == 0){
                 retval = FDB_ERR_IS_NOT_INTEGER;
                 goto end;
             }
-            uint64_t _old = rocksdb_decode_fixed64(fdb_slice_data(slice_val));
-            int64_t *old = (int64_t*)&_old; 
-            if(is_int64_overflow(*old, by)){
+            long long old = atoll(fdb_slice_data(slice_value));
+            if(is_int64_overflow(old, by)){
                 retval = FDB_ERR_INCDECR_OVERFLOW;
                 goto end;
             }
-            char buff[sizeof(int64_t)] = {0};
-            rocksdb_encode_fixed64(buff, *old + by);
-            fdb_slice_destroy(slice_val);
-            slice_val = fdb_slice_create(buff, sizeof(int64_t));
+            char buff[128] = {0};
+            sprintf(buff, "%lld", (long long)(old + by));
+            *val = old + by;
+            fdb_slice_destroy(slice_value);
+            slice_value = fdb_slice_create(buff, strlen(buff));
         }else if(ret == 0){
             if(is_int64_overflow(init, by)){
                 retval = FDB_ERR_INCDECR_OVERFLOW;
                 goto end;
             } 
-            char buff[sizeof(int64_t)] = {0};
-            rocksdb_encode_fixed64(buff, init + by);
-            fdb_slice_destroy(slice_val);
-            slice_val = fdb_slice_create(buff, sizeof(int64_t));
+            char buff[128] = {0};
+            sprintf(buff, "%lld", (long long)(init + by));
+            *val = init + by;
+            fdb_slice_destroy(slice_value);
+            slice_value = fdb_slice_create(buff, strlen(buff));
         }else{
             retval = FDB_ERR;
             goto end;
         }
-        ret = hset_one(context, slot, key, field, slice_val);
+        ret = hset_one(context, slot, key, field, slice_value);
+        fdb_slice_destroy(slice_value);
         if(ret >=0){
             if(ret > 0){
                 if(hash_incr_size(context, slot, key, 1) < 0){
