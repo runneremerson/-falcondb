@@ -13,7 +13,7 @@ int decode_hsize_key(const char* fdbkey, size_t fdbkeylen, uint64_t* size);
 
 
 void encode_hash_key(const char* key, size_t keylen, const char* field, size_t fieldlen, fdb_slice_t** pslice);
-int decode_hash_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t **pslice_key, fdb_slice_t **pslice_field);
+int decode_hash_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t **pkey, fdb_slice_t **pfield);
 
 
 

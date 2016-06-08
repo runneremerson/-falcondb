@@ -21,7 +21,7 @@ void fdb_iterator_destroy(fdb_iterator_t* iterator);
 
 int fdb_iterator_skip(fdb_iterator_t* iterator, uint64_t offset);
 
-int fdb_iterator_valid(fdb_iterator_t* iterator);
+int fdb_iterator_valid(const fdb_iterator_t* iterator);
 
 int fdb_iterator_next(fdb_iterator_t* iterator);
 
