@@ -23,9 +23,9 @@ int set_member_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key
 
 int set_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* size);
 
-int set_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* members);
+int set_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member);
 
-int set_add(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* members);
+int set_add(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member);
 
 #endif //FDB_T_SET_H
 

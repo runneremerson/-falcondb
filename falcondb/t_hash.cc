@@ -26,7 +26,7 @@ static int hdel_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
 
 static int hash_incr_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t by);
 
-static int hash_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* fstart, fdb_slice_t* fend, 
+static int hget_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* fstart, fdb_slice_t* fend, 
                      uint64_t limit, int reverse, fdb_iterator_t** piterator);
 
 
@@ -192,7 +192,7 @@ static int hset_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
 
     if(fdb_slice_length(key)==0 || fdb_slice_length(field)==0){
         fprintf(stderr, "%s empty key or field!\n", __func__);
-        return 0;
+        return -1;
     }
     if(fdb_slice_length(key) > FDB_DATA_TYPE_KEY_LEN_MAX){
         fprintf(stderr, "%s name too long!\n", __func__);
@@ -272,33 +272,34 @@ static int hdel_one(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, 
 }
 
 static int hash_incr_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t by){  
-  uint64_t length = 0;
-  int ret = hget_len(context, slot, key, &length);
-  if(ret!=0 && ret != 1){
-    return -1;
-  }
-  int64_t size = (int64_t)length;
-  size += by;
+    uint64_t length = 0;
+    int ret = hget_len(context, slot, key, &length);
+    if(ret!=0 && ret != 1){
+        return -1;
+    }
+    int64_t size = (int64_t)length;
+    size += by;
 
-  fdb_slice_t* slice_key = NULL;
-  encode_hsize_key(fdb_slice_data(key),
-                   fdb_slice_length(key),
-                   &slice_key);
-  if(size <= 0){
-    fdb_slot_writebatch_delete(slot,
-                               fdb_slice_data(slice_key),
-                               fdb_slice_length(slice_key));
-  }else{
-    char buff[sizeof(uint64_t)] = {0};
-    length = size;
-    rocksdb_encode_fixed64(buff, length);
-    fdb_slot_writebatch_put(slot,
-                            fdb_slice_data(slice_key),
-                            fdb_slice_length(slice_key),
-                            buff,
-                            sizeof(buff));
-  }
-  return 0;
+    fdb_slice_t* slice_key = NULL;
+    encode_hsize_key(fdb_slice_data(key),
+            fdb_slice_length(key),
+            &slice_key);
+    if(size <= 0){
+        fdb_slot_writebatch_delete(slot,
+                fdb_slice_data(slice_key),
+                fdb_slice_length(slice_key));
+    }else{
+        char buff[sizeof(uint64_t)] = {0};
+        length = size;
+        rocksdb_encode_fixed64(buff, length);
+        fdb_slot_writebatch_put(slot,
+                fdb_slice_data(slice_key),
+                fdb_slice_length(slice_key),
+                buff,
+                sizeof(buff));
+    }
+    fdb_slice_destroy(slice_key);
+    return 0;
 }
 
 
@@ -322,9 +323,8 @@ int hash_getall(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_
     int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval == FDB_OK){
         fdb_iterator_t *iterator = NULL;
-        if(hash_scan(context, slot, key, NULL, NULL, 20000000, 0, &iterator)!=0){
-            retval = FDB_OK_RANGE_HAVE_NONE;
-            goto end;
+        if(hget_scan(context, slot, key, NULL, NULL, 20000000, 0, &iterator)!=0){
+            return FDB_OK_RANGE_HAVE_NONE;
         }
         fdb_array_t *array = fdb_array_create(128);
         do{
@@ -348,8 +348,6 @@ int hash_getall(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_
         *rets = array;
         retval = FDB_OK; 
     }
-
-end:
     return retval;
 }
 
@@ -357,9 +355,8 @@ int hash_keys(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_ar
     int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval == FDB_OK){
         fdb_iterator_t *iterator = NULL;
-        if(hash_scan(context, slot, key, NULL, NULL, 20000000, 0, &iterator)!=0){
-            retval = FDB_OK_RANGE_HAVE_NONE;
-            goto end;
+        if(hget_scan(context, slot, key, NULL, NULL, 20000000, 0, &iterator)!=0){
+            return FDB_OK_RANGE_HAVE_NONE;
         }
         fdb_array_t *array = fdb_array_create(128);
         do{
@@ -377,8 +374,6 @@ int hash_keys(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_ar
         *rets = array;
         retval = FDB_OK; 
     } 
-
-end:
     return retval;
 }
 
@@ -386,9 +381,8 @@ int hash_vals(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_ar
     int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval == FDB_OK){
         fdb_iterator_t *iterator = NULL;
-        if(hash_scan(context, slot, key, NULL, NULL, 20000000, 0, &iterator)!=0){
-            retval = FDB_OK_RANGE_HAVE_NONE;
-            goto end;
+        if(hget_scan(context, slot, key, NULL, NULL, 20000000, 0, &iterator)!=0){
+            return FDB_OK_RANGE_HAVE_NONE;
         }
         fdb_array_t *array = fdb_array_create(128);
         do{
@@ -407,7 +401,6 @@ int hash_vals(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_ar
         retval = FDB_OK; 
     }
 
-end:
     return retval;
 }
 
@@ -627,7 +620,7 @@ end:
     return retval;
 }
 
-static int hash_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* fstart, fdb_slice_t* fend, 
+static int hget_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* fstart, fdb_slice_t* fend, 
                      uint64_t limit, int reverse, fdb_iterator_t** piterator){
 
   fdb_slice_t *slice_start, *slice_end = NULL;

@@ -4,7 +4,7 @@ LIBS = ../libfdb.a
 
 CXXFLAGS+=  -I../  
 
-all: simple_example.o test_context.o test_util.o test_slice.o test_bytes.o test_object.o test_keys.o test_string.o test_hash.o
+all: simple_example.o test_context.o test_util.o test_slice.o test_bytes.o test_object.o test_keys.o test_string.o test_hash.o test_zset.o
 	${CXX}  -o simple_example    simple_example.o     ${CLIBS}
 	${CXX}  -o test_context      test_context.o       ${LIBS} ${CLIBS}
 	${CXX}  -o test_util      	 test_util.o       	  ${LIBS} ${CLIBS}
@@ -14,6 +14,7 @@ all: simple_example.o test_context.o test_util.o test_slice.o test_bytes.o test_
 	${CXX}  -o test_keys       	 test_keys.o          ${LIBS} ${CLIBS}
 	${CXX}  -o test_string       test_string.o        ${LIBS} ${CLIBS}
 	${CXX}  -o test_hash       	 test_hash.o          ${LIBS} ${CLIBS}
+	${CXX}  -o test_zset       	 test_zset.o          ${LIBS} ${CLIBS}
 
 
 
@@ -44,6 +45,8 @@ test_string.o: test_string.cc
 test_hash.o: test_hash.cc
 	${CXX} ${CXXFLAGS} -c test_hash.cc
 
+test_zset.o: test_zset.cc
+	${CXX} ${CXXFLAGS} -c test_zset.cc
 
 clean:
 	rm -f *.o
@@ -56,3 +59,4 @@ clean:
 	rm -f test_string
 	rm -f test_keys
 	rm -f test_hash
+	rm -f test_zset
