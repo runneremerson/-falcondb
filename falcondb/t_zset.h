@@ -19,7 +19,7 @@ int decode_zscore_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pkey, 
 
 int zset_add(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, double score);
 
-int zset_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key);
+int zset_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member);
 
 int zset_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* size);
 

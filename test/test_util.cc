@@ -5,6 +5,9 @@
 #include <string.h>
 
 int main(int argc, char* argv[]){
+
+    assert(sizeof(double) == 8);
+
     double a1= 1.0;
     //printbuf(&a1, sizeof(double));
 
@@ -55,6 +58,7 @@ int main(int argc, char* argv[]){
     assert(memcmp(c3_char_array, b3_char_array, sizeof(double))>0);
     assert(memcmp(a3_char_array, c3_char_array, sizeof(double))>0);
     assert(memcmp(a3_char_array, b3_char_array, sizeof(double))>0);
+
 
     return 0;
 }
