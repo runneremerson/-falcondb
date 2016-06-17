@@ -388,14 +388,14 @@ func (slot *FdbSlot) HSetNX(key, field, value []byte) (int64, error) {
 	return 0, nil
 }
 
-func (slot *FdbSlot) HGetAll(key []byte) ([]FdbFVPair, error) {
-	return nil, nil
+func (slot *FdbSlot) HGetAll(key []byte) ([][]byte, [][]byte, error) {
+	return nil, nil, nil
 }
-func (slot *FdbSlot) HMset(key []byte, args ...FdbFVPair) (int64, error) {
+func (slot *FdbSlot) HMset(key []byte, fields, values [][]byte) (int64, error) {
 	return 0, nil
 }
 
-func (slot *FdbSlot) ZAdd(key []byte, args ...FdbScore) (int64, error) {
+func (slot *FdbSlot) ZAdd(key []byte, members [][]byte, scores []float64) (int64, error) {
 	return 0, nil
 }
 
@@ -427,12 +427,12 @@ func (slot *FdbSlot) ZLexCount(key []byte, min []byte, max []byte, rangeType uin
 	return 0, nil
 }
 
-func (slot *FdbSlot) ZRange(key []byte, start int, stop int) ([]FdbScore, error) {
-	return nil, nil
+func (slot *FdbSlot) ZRange(key []byte, start int, stop int, withscore bool) ([][]byte, []float64, error) {
+	return nil, nil, nil
 }
 
-func (slot *FdbSlot) ZRevRange(key []byte, start int, stop int) ([]FdbScore, error) {
-	return nil, nil
+func (slot *FdbSlot) ZRevRange(key []byte, start int, stop int, withscore bool) ([][]byte, []float64, error) {
+	return nil, nil, nil
 }
 
 func (slot *FdbSlot) ZRank(key []byte, member []byte) (int64, error) {
@@ -475,8 +475,8 @@ func (slot *FdbSlot) PTTL(key []byte) (int64, error) {
 	return 0, nil
 }
 
-func (slot *FdbSlot) Type(key []byte) (string, error) {
-	return "", nil
+func (slot *FdbSlot) Type(key []byte) ([]byte, error) {
+	return []byte(""), nil
 }
 
 func (slot *FdbSlot) Persist(key []byte) (int64, error) {
