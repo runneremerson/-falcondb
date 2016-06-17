@@ -180,12 +180,12 @@ int main(int argc, char* argv[]){
 
 
     fdb_slice_t *key1_13_1 = fdb_slice_create("key1", strlen("key1"));
-    print_zset_range(ctx, slots[1], key1_13_1, 1);
+    //print_zset_range(ctx, slots[1], key1_13_1, 1);
     fdb_slice_destroy(key1_13_1);
     
 
     fdb_slice_t *key1_13_2 = fdb_slice_create("key1", strlen("key1"));
-    print_zset_range(ctx, slots[1], key1_13_2, 0);
+    //print_zset_range(ctx, slots[1], key1_13_2, 0);
     fdb_slice_destroy(key1_13_2);
 
     fdb_slice_t *key1_13_3 = fdb_slice_create("key1", strlen("key1"));
@@ -203,29 +203,200 @@ int main(int argc, char* argv[]){
     fdb_slice_destroy(key1_13_4); 
 
     fdb_slice_t *key1_13_5 = fdb_slice_create("key1", strlen("key1"));
-    print_zset_range(ctx, slots[1], key1_13_5, 0);
+    //print_zset_range(ctx, slots[1], key1_13_5, 0);
     fdb_slice_destroy(key1_13_5);
 
 
     fdb_slice_t *key1_13_6 = fdb_slice_create("key1", strlen("key1"));
-    print_zset_scan(ctx, slots[1], key1_13_6, -100.0, 100.0, 0, 0);
+    //print_zset_scan(ctx, slots[1], key1_13_6, -100.0, 100.0, 0, 0);
     fdb_slice_destroy(key1_13_6);
 
 
     fdb_slice_t *key1_13_7 = fdb_slice_create("key1", strlen("key1"));
-    print_zset_scan(ctx, slots[1], key1_13_7, 100.0, -100.0, 1, 0);
+    //print_zset_scan(ctx, slots[1], key1_13_7, 100.0, -100.0, 1, 0);
     fdb_slice_destroy(key1_13_7);
 
 
     fdb_slice_t *key1_13_8 = fdb_slice_create("key1", strlen("key1"));
-    print_zset_scan(ctx, slots[1], key1_13_8, -40.1, 1.2233, 0, (0x1 | 0x2));
+    //print_zset_scan(ctx, slots[1], key1_13_8, -40.1, 1.2233, 0, (0x1 | 0x2));
     fdb_slice_destroy(key1_13_8);
 
 
     fdb_slice_t *key1_13_9 = fdb_slice_create("key1", strlen("key1"));
-    print_zset_scan(ctx, slots[1], key1_13_9, 1.2233, -40.1, 1, (0x1));
+    //print_zset_scan(ctx, slots[1], key1_13_9, 1.2233, -40.1, 1, (0x1));
     fdb_slice_destroy(key1_13_9);
     
+    fdb_slice_t *key1_13_10 = fdb_slice_create("key1", strlen("key1"));
+    //print_zset_scan(ctx, slots[1], key1_13_10, 1.2233, -40.1, 1, 1);
+    fdb_slice_destroy(key1_13_10);
+   
+
+
+    fdb_slice_t *key1_14 = fdb_slice_create("key1", strlen("key1"));
+    int64_t count = 0;
+    ret = zset_count(ctx, slots[1], key1_14, -40.1, 1000.0, 0x1, &count);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_14);
+    assert(count == 7);
+
+
+    fdb_slice_t *key1_14_0 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_count(ctx, slots[1], key1_14_0, -40.1, -40.1, 0, &count);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_14_0);
+    assert(count == 1);
+
+
+    fdb_slice_t *key1_14_1 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_count(ctx, slots[1], key1_14_1, -40.1, -40.1, 0x1, &count);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_14_1);
+    assert(count == 0);
+
+
+    fdb_slice_t *key1_14_2 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_count(ctx, slots[1], key1_14_2, -40.1, -40.1, (0x1 | 0x2), &count);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_14_2);
+    assert(count == 0);
+
+
+    fdb_slice_t *key1_14_3 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_count(ctx, slots[1], key1_14_3, 100.0, 100.0, 0, &count);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_14_3);
+    assert(count == 0);
+
+    fdb_slice_t *key1_14_4 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_count(ctx, slots[1], key1_14_4, 100.0, 10011.0, 0, &count);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_14_4);
+    assert(count == 0);
+
+    
+
+    fdb_slice_t *key1_15 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_rem_range_by_rank(ctx, slots[1], key1_15, 0, 1, &count);
+    assert(ret == FDB_OK);
+    assert(count == 2);
+    fdb_slice_destroy(key1_15);
+
+    fdb_slice_t *key1_15_0 = fdb_slice_create("key1", strlen("key1"));
+    //print_zset_scan(ctx, slots[1], key1_15_0, -50.0, 100.0, 0, 0);
+    fdb_slice_destroy(key1_15_0);
+
+
+    fdb_slice_t *key1_15_1 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_rem_range_by_rank(ctx, slots[1], key1_15_1, -2, -1, &count);
+    assert(ret == FDB_OK);
+    assert(count == 2);
+    fdb_slice_destroy(key1_15_1);
+
+
+    fdb_slice_t *key1_15_2 = fdb_slice_create("key1", strlen("key1"));
+    //print_zset_scan(ctx, slots[1], key1_15_2, -50.0, 100.0, 0, 0);
+    fdb_slice_destroy(key1_15_2);
+
+
+    //add more member for test rem_range_by_score
+    fdb_slice_t *key1_16 = fdb_slice_create("key1", strlen("key1"));
+    fdb_slice_t *mber10 = fdb_slice_create("member10", strlen("member10"));
+    ret = zset_add(ctx, slots[1], key1_16, mber10, -200.99);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_16);
+
+    fdb_slice_t *key1_16_0 = fdb_slice_create("key1", strlen("key1"));
+    fdb_slice_t *mber11 = fdb_slice_create("member11", strlen("member11"));
+    ret = zset_add(ctx, slots[1], key1_16_0, mber11, -130.99334);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_16_0);
+
+
+    fdb_slice_t *key1_16_1 = fdb_slice_create("key1", strlen("key1"));
+    fdb_slice_t *mber12 = fdb_slice_create("member12", strlen("member12"));
+    ret = zset_add(ctx, slots[1], key1_16_1, mber12, -110.7834);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_16_1);
+
+
+    fdb_slice_t *key1_16_2 = fdb_slice_create("key1", strlen("key1"));
+    fdb_slice_t *mber13 = fdb_slice_create("member13", strlen("member13"));
+    ret = zset_add(ctx, slots[1], key1_16_2, mber13, 13.44434);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_16_2);
+
+
+    fdb_slice_t *key1_16_3 = fdb_slice_create("key1", strlen("key1"));
+    fdb_slice_t *mber14 = fdb_slice_create("member14", strlen("member14"));
+    ret = zset_add(ctx, slots[1], key1_16_3, mber14, 73.888);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key1_16_3);
+
+
+    fdb_slice_t *key1_16_4 = fdb_slice_create("key1", strlen("key1"));
+    print_zset_scan(ctx, slots[1], key1_16_4, -1000.0, 1000.0, 0, 0);
+    fdb_slice_destroy(key1_16_4);
+
+    fdb_slice_t *key1_16_5 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_rem_range_by_score(ctx, slots[1], key1_16_5, -20.99, -20.99, 2, &count);
+    assert(ret == FDB_OK_RANGE_HAVE_NONE);
+    fdb_slice_destroy(key1_16_5);
+
+    fdb_slice_t *key1_16_6 = fdb_slice_create("key1", strlen("key1"));
+    print_zset_scan(ctx, slots[1], key1_16_6, -1000.0, 1000.0, 0, 0);
+    fdb_slice_destroy(key1_16_6);
+
+    fdb_slice_t *key1_16_7 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_rem_range_by_score(ctx, slots[1], key1_16_7, -2.0, 1400.0, 3, &count);
+    assert(ret == FDB_OK);
+    assert(count == 4);
+    fdb_slice_destroy(key1_16_7);
+
+
+    fdb_slice_t *key1_16_8 = fdb_slice_create("key1", strlen("key1"));
+    print_zset_scan(ctx, slots[1], key1_16_8, -1000.0, 1000.0, 0, 0);
+    fdb_slice_destroy(key1_16_8);
+
+
+    fdb_slice_t *key1_16_9 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_rem_range_by_score(ctx, slots[1], key1_16_9, -200.0, 1400.0, 3, &count);
+    assert(ret == FDB_OK);
+    assert(count == 4);
+    fdb_slice_destroy(key1_16_9);
+
+
+    fdb_slice_t *key1_16_10 = fdb_slice_create("key1", strlen("key1"));
+    size = -1;
+    ret = zset_size(ctx, slots[1], key1_16_10, &size);
+    assert(ret == FDB_OK);
+    assert(size == 1);
+    fdb_slice_destroy(key1_16_10);
+
+
+    fdb_slice_t *key1_16_11 = fdb_slice_create("key1", strlen("key1"));
+    count = -1;
+    ret = zset_rem_range_by_score(ctx, slots[1], key1_16_11, -2000.0, 1400.0, 3, &count);
+    assert(ret == FDB_OK);
+    assert(count == 1);
+    fdb_slice_destroy(key1_16_11);
+
+
+    fdb_slice_t *key1_16_12 = fdb_slice_create("key1", strlen("key1"));
+    size = -1;
+    ret = zset_size(ctx, slots[1], key1_16_12, &size);
+    assert(ret == FDB_OK);
+    assert(size == 0);
+    fdb_slice_destroy(key1_16_12);
 
 
     fdb_slice_destroy(mber1);
@@ -237,6 +408,11 @@ int main(int argc, char* argv[]){
     fdb_slice_destroy(mber7);
     fdb_slice_destroy(mber8);
     fdb_slice_destroy(mber9);
+    fdb_slice_destroy(mber10);
+    fdb_slice_destroy(mber11);
+    fdb_slice_destroy(mber12);
+    fdb_slice_destroy(mber13);
+    fdb_slice_destroy(mber14);
     fdb_slice_destroy(mberx);
     fdb_context_destroy(ctx);
     return 0;

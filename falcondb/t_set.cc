@@ -355,7 +355,8 @@ int set_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t
             *size = (int64_t)len;
             retval = FDB_OK;
         }else if(ret == 0){
-            retval = FDB_OK_NOT_EXIST;
+            *size = 0;
+            retval = FDB_OK;
         }else{
             retval = FDB_ERR;
         }
