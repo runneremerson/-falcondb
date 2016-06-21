@@ -27,8 +27,10 @@ int main(int argc, char* argv[]){
     fdb_slice_destroy(key1_0);
 
     fdb_slice_t* key1_1 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    ret = hash_set(ctx, slots[1], key1_1, fld1, val1);
+    int64_t set_count = -1;
+    ret = hash_set(ctx, slots[1], key1_1, fld1, val1, &set_count);
     assert(ret == FDB_OK);
+    assert(set_count == 1);
     fdb_slice_destroy(key1_1);
 
     fdb_slice_t* key1_2 = fdb_slice_create("hash_key1", strlen("hash_key1"));
@@ -46,10 +48,19 @@ int main(int argc, char* argv[]){
     assert(ret == FDB_OK);
     fdb_slice_destroy(key1_3);
 
+    int64_t del_count = -1;
     fdb_slice_t* key1_4 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    ret = hash_del(ctx, slots[1], key1_4, fld1);
+    fdb_array_t* flds1 = fdb_array_create(2);
+
+    fdb_val_node_t *node1_4 = fdb_val_node_create();
+    node1_4->val_.vval_ = fld1;
+    fdb_array_push_back(flds1, node1_4);
+
+    ret = hash_del(ctx, slots[1], key1_4, flds1, &del_count);
     assert(ret == FDB_OK);
+    assert(del_count == 1);
     fdb_slice_destroy(key1_4);
+    fdb_array_destroy(flds1);
 
 
     fdb_slice_t* key1_5 = fdb_slice_create("hash_key1", strlen("hash_key1"));
@@ -64,12 +75,15 @@ int main(int argc, char* argv[]){
 
 
     fdb_slice_t* key1_7 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    ret = hash_setnx(ctx, slots[1], key1_7, fld1, val1);
+    set_count = -1;
+    ret = hash_setnx(ctx, slots[1], key1_7, fld1, val1, &set_count);
     assert(ret == FDB_OK);
+    assert(set_count==1);
     fdb_slice_destroy(key1_7);
 
     fdb_slice_t* key1_8 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    ret = hash_setnx(ctx, slots[1], key1_8, fld1, val1);
+    set_count = -1;
+    ret = hash_setnx(ctx, slots[1], key1_8, fld1, val1, &set_count);
     assert(ret == FDB_OK_BUT_ALREADY_EXIST);
     fdb_slice_destroy(key1_8);
 
@@ -145,10 +159,40 @@ int main(int argc, char* argv[]){
     fdb_array_destroy(vals_rets1);
     fdb_slice_destroy(key1_14);
 
+    //hmset
+    fprintf(stdout, "hmset\n");
+    fdb_slice_t* key1_14_0 = fdb_slice_create("hash_key1", strlen("hash_key1"));
+    fdb_array_t *fldvals1 = fdb_array_create(2);
+
+    fdb_slice_t* fld3 = fdb_slice_create("hash_fld3", strlen("hash_fld3"));
+    fdb_slice_t* val3 = fdb_slice_create("hash_val3", strlen("hash_val3"));
+    fdb_slice_t* fld4 = fdb_slice_create("hash_fld4", strlen("hash_fld4"));
+    fdb_slice_t* val4 = fdb_slice_create("hash_val4", strlen("hash_val4"));
+    fdb_val_node_t *fnode3 = fdb_val_node_create();
+    fnode3->val_.vval_ = fld3;
+    fdb_array_push_back(fldvals1, fnode3);
+
+    fdb_val_node_t *vnode3 = fdb_val_node_create();
+    vnode3->val_.vval_ = val3;
+    fdb_array_push_back(fldvals1, vnode3);
+
+    fdb_val_node_t *fnode4 = fdb_val_node_create();
+    fnode4->val_.vval_ = fld4;
+    fdb_array_push_back(fldvals1, fnode4);
+
+    fdb_val_node_t *vnode4 = fdb_val_node_create();
+    vnode4->val_.vval_ = val4;
+    fdb_array_push_back(fldvals1, vnode4);
+
+    int64_t hmset_count = -1;
+    ret = hash_mset(ctx, slots[1], key1_14_0, fldvals1, &hmset_count);
+    assert(ret == FDB_OK);
+    assert(hmset_count == 2);
+
     //hmget
     fprintf(stdout, "hmget\n");
     fdb_slice_t* key1_15 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    fdb_array_t *flds1 = fdb_array_create(2);
+    flds1 = fdb_array_create(2);
     vals_rets1 = NULL;
 
     fdb_val_node_t *node1 = fdb_val_node_create();
@@ -159,10 +203,12 @@ int main(int argc, char* argv[]){
 
     fdb_array_push_back(flds1, node1);
     fdb_array_push_back(flds1, node2);
+    fdb_array_push_back(flds1, fnode3);
+    fdb_array_push_back(flds1, fnode4);
 
     ret = hash_mget(ctx, slots[1], key1_15, flds1, &vals_rets1);
     assert(ret == FDB_OK);
-    assert(vals_rets1->length_ == 2);
+    assert(vals_rets1->length_ == 4);
     for(int i=0; i<vals_rets1->length_; ++i){ 
         fdb_val_node_t *node = fdb_array_at(vals_rets1, i);
         fdb_slice_t *sl = (fdb_slice_t*)(node->val_.vval_);
@@ -174,8 +220,12 @@ int main(int argc, char* argv[]){
 
 
     fdb_slice_destroy(val1);
+    fdb_slice_destroy(val3);
+    fdb_slice_destroy(val4);
     fdb_slice_destroy(fld1);
     fdb_slice_destroy(fld2);
+    fdb_slice_destroy(fld3);
+    fdb_slice_destroy(fld4);
     fdb_context_destroy(ctx);
     return 0;
 }

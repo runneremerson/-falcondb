@@ -432,7 +432,39 @@ int hash_mget(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_ar
 }
 
 
-int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value){ 
+int hash_mset(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* fvs, int64_t* count){ 
+    int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_HASH);
+    if(retval != FDB_OK){
+        return retval;
+    }
+    if((fvs->length_%2)==1){
+        return FDB_ERR_WRONG_NUMBER_ARGUMENTS;
+    }
+    int64_t _count = 0;
+    for(size_t i=0; i<fvs->length_;){
+        fdb_slice_t *field = (fdb_slice_t*)(fdb_array_at(fvs, i++)->val_.vval_);
+        fdb_slice_t *value = (fdb_slice_t*)(fdb_array_at(fvs, i++)->val_.vval_);
+        int ret = hset_one(context, slot, key, field, value);
+        if(ret >=0){
+            if(ret > 0){
+                if(hash_incr_size(context, slot, key, 1) == 0){
+                    ++_count; 
+                }
+            }
+            char *errptr = NULL;
+            fdb_slot_writebatch_commit(context, slot, &errptr);
+            if(errptr != NULL){
+                fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", __func__, errptr);
+                rocksdb_free(errptr);
+            } 
+        }
+    }
+    *count = _count;
+    return FDB_OK;
+}
+
+
+int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value, int64_t* count){ 
 
     int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval != FDB_OK){
@@ -440,9 +472,12 @@ int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_sli
     }
 
     int ret = hset_one(context, slot, key, field, value); 
+    int64_t _count = 0;
     if(ret >=0){
         if(ret > 0){
-            if(hash_incr_size(context, slot, key, 1) < 0){
+            if(hash_incr_size(context, slot, key, 1) == 0){
+                _count = 1;
+            }else{
                 return FDB_ERR;
             }
         }
@@ -452,7 +487,9 @@ int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_sli
             fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", __func__, errptr);
             rocksdb_free(errptr);
             return FDB_ERR;
-        }
+        }else{
+            *count = _count;
+        } 
         retval = FDB_OK;
     }else{
         retval = FDB_ERR;
@@ -462,7 +499,7 @@ int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_sli
 }
 
 
-int hash_setnx(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value){ 
+int hash_setnx(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value, int64_t* count){ 
     int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval == FDB_OK){
         fdb_slice_t* slice_val = NULL;
@@ -471,8 +508,11 @@ int hash_setnx(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_s
             retval = FDB_OK_BUT_ALREADY_EXIST;
         }else if(ret == 0){
             ret = hset_one(context, slot, key, field, value);
+            int64_t _count = 0;
             if(ret > 0){
-                if(hash_incr_size(context, slot, key, 1) < 0){
+                if(hash_incr_size(context, slot, key, 1) == 0){
+                    _count = 1;
+                }else{
                     retval = FDB_ERR;
                     goto end;
                 }
@@ -484,6 +524,8 @@ int hash_setnx(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_s
                 rocksdb_free(errptr);
                 retval = FDB_ERR;
                 goto  end;
+            }else{
+                *count = _count;
             }
             retval = FDB_OK;
         }else{
@@ -516,31 +558,32 @@ int hash_length(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int6
 }
 
 
-int hash_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field){ 
+int hash_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* fields, int64_t* count){ 
     int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval != FDB_OK){
         return retval;
     }
-    int ret = hdel_one(context, slot, key, field);
-    if(ret >=0){
-        if(ret > 0){
-            if(hash_incr_size(context, slot, key, -1) < 0){
-                return FDB_ERR;
+
+    int64_t _count = 0;
+    for(size_t i=0; i<fields->length_; ++i){ 
+        fdb_slice_t *field = (fdb_slice_t*)(fdb_array_at(fields, i)->val_.vval_);
+        int ret = hdel_one(context, slot, key, field);
+        if(ret >=0){
+            if(ret > 0){
+                if(hash_incr_size(context, slot, key, -1)==0){
+                    ++_count;
+                }
             }
             char *errptr = NULL;
             fdb_slot_writebatch_commit(context, slot, &errptr);
             if(errptr != NULL){
                 fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", errptr, __func__);
                 rocksdb_free(errptr);
-                return FDB_ERR;
             }
-            return FDB_OK;
         }
-        retval = FDB_OK_NOT_EXIST;
-    }else{
-        retval = FDB_ERR;
     }
-    return retval;
+    *count = _count;
+    return FDB_OK;
 }
 
 int hash_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field){
@@ -598,7 +641,7 @@ int hash_incr(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_sl
         fdb_slice_destroy(slice_value);
         if(ret >=0){
             if(ret > 0){
-                if(hash_incr_size(context, slot, key, 1) < 0){
+                if(hash_incr_size(context, slot, key, 1) != 0){
                     retval = FDB_ERR;
                     goto end;
                 }

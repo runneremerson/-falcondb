@@ -6,8 +6,9 @@
 #include "fdb_define.h"
 #include "fdb_object.h"
 
-#include "t_string.h"
 #include "t_keys.h"
+#include "t_string.h"
+#include "t_hash.h"
 
 #include <string.h>
 #include <assert.h>
@@ -268,6 +269,93 @@ int fdb_incrby(fdb_context_t* context,
     return retval; 
 }
 
+
+int fdb_hset(fdb_context_t* context,
+        uint64_t id,
+        fdb_item_t* key,
+        fdb_item_t* fld,
+        fdb_item_t* val,
+        int64_t* count){
+    fdb_slot_t* slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_slice_t *slice_fld = fdb_slice_create(fld->data_, fld->data_len_);
+    fdb_slice_t *slice_val = fdb_slice_create(val->data_, val->data_len_);
+
+    int retval = hash_set(context, slot, slice_key, slice_fld, slice_val, count);
+
+    fdb_slice_destroy(slice_key);
+    fdb_slice_destroy(slice_val);
+    fdb_slice_destroy(slice_fld);
+    return retval;
+}
+
+
+int fdb_hget(fdb_context_t* context,
+        uint64_t id,
+        fdb_item_t* key,
+        fdb_item_t* fld,
+        fdb_item_t** pval){ 
+    fdb_slot_t* slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_slice_t *slice_fld = fdb_slice_create(fld->data_, fld->data_len_);
+    fdb_slice_t *slice_val = NULL;
+
+    int retval = hash_get(context, slot, slice_key, slice_fld, &slice_val);
+    if(retval != FDB_OK){
+        goto end;
+    }
+    *pval = create_fdb_item_array(1);
+    retval = FDB_OK; 
+    decode_slice_value(*pval, slice_val, retval);
+
+end:
+    fdb_slice_destroy(slice_key);
+    fdb_slice_destroy(slice_fld);
+    fdb_slice_destroy(slice_val);
+    return retval;
+}
+
+int fdb_hmget(fdb_context_t* context,
+              uint64_t id,
+              fdb_item_t* key,
+              size_t length,
+              fdb_item_t* flds,
+              fdb_item_t** pvals){
+                  
+    return 0;
+}
+
+int fdb_hdel(fdb_context_t* context,
+             uint64_t id,
+             fdb_item_t* key,
+             size_t length,
+             fdb_item_t* flds,
+             int64_t *count){
+    return 0;
+}
+
+int fdb_hlen(fdb_context_t* context,
+             uint64_t id,
+             fdb_item_t* key,
+             int64_t *length){
+    return 0;
+}
+
+
+int fdb_hincrby(fdb_context_t* context,
+                uint64_t id,
+                fdb_item_t* key,
+                int64_t by,
+                int64_t* result){
+    return 0;
+}
+
+int fdb_hexists(fdb_context_t* context,
+                uint64_t id,
+                fdb_item_t* key,
+                int64_t* count){
+    return 0;
+}
 
 
 

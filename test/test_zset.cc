@@ -8,7 +8,8 @@
 #include <string.h>
 #include <math.h>
 
-void print_zset_range(fdb_context_t* ctx, fdb_slot_t* slot, fdb_slice_t* key, int reverse){
+void print_zset_range(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, int reverse){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
     printf("%s reverse[%d]\n", __func__, reverse);
     fdb_array_t *range = NULL;
     int ret = zset_range(ctx, slot, key, 0, -1, reverse, &range);
@@ -22,10 +23,12 @@ void print_zset_range(fdb_context_t* ctx, fdb_slot_t* slot, fdb_slice_t* key, in
         fprintf(stdout, "range = %lu, member = %s, score =%20f\n", range->length_, fdb_slice_data(sl), score);
         fdb_slice_destroy(sl);
     }
+    fdb_slice_destroy(key);
     fdb_array_destroy(range);
 }
 
-void print_zset_scan(fdb_context_t* ctx, fdb_slot_t* slot, fdb_slice_t* key, double start, double end, int reverse, uint8_t type){
+void print_zset_scan(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, double start, double end, int reverse, uint8_t type){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
     printf("%s reverse[%d], type[%u]\n", __func__, reverse, type);
     fdb_array_t *scan = NULL;
     int ret = zset_scan(ctx, slot, key, start, end, reverse, type, &scan);
@@ -39,7 +42,118 @@ void print_zset_scan(fdb_context_t* ctx, fdb_slot_t* slot, fdb_slice_t* key, dou
         fprintf(stdout, "scan = %lu, member = %s, score =%20f\n", scan->length_, fdb_slice_data(sl), score);
         fdb_slice_destroy(sl);
     }
+    fdb_slice_destroy(key);
     fdb_array_destroy(scan); 
+}
+
+void test_zset_add(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* smember, double score, int retcode, int64_t count){
+    fdb_array_t *array = fdb_array_create(2);
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t *mber = fdb_slice_create(smember, strlen(smember));
+
+    fdb_val_node_t *score_node = fdb_val_node_create();
+    score_node->val_.dval_ = score;
+
+    fdb_val_node_t *member_node = fdb_val_node_create();
+    member_node->val_.vval_ = mber;
+
+    fdb_array_push_back(array, score_node);
+    fdb_array_push_back(array, member_node);
+    int64_t add_count = -1;
+    int ret = zset_add(ctx, slot, key, array, &add_count);
+    assert(ret == retcode);
+    assert(add_count == count);
+
+    fdb_array_destroy(array);
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(mber);
+}
+
+void test_zset_size(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, int retcode, int64_t size){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    int64_t zset_size_ = 0;
+    int ret = zset_size(ctx, slot, key, &zset_size_);
+    assert(ret == retcode);
+    assert(size == zset_size_);
+    fdb_slice_destroy(key); 
+}
+
+void test_zset_score(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* smember, int retcode, double score){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t *mber = fdb_slice_create(smember, strlen(smember));
+    double zset_score_ = 0.0;
+    int ret = zset_score(ctx, slot, key, mber, &zset_score_);
+    assert(ret == retcode);
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(mber);
+    assert(fabs(zset_score_-score) <= 0.000001);
+}
+
+void test_zset_rem(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* smember, int retcode, int64_t count){
+    fdb_slice_t *mber = fdb_slice_create(smember, strlen(smember));
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    fdb_array_t *array = fdb_array_create(2);
+    fdb_val_node_t *member_node = fdb_val_node_create();
+    member_node->val_.vval_ = mber;
+    fdb_array_push_back(array, member_node);
+    int64_t del_count = -1;
+    int ret = zset_rem(ctx, slot, key, array, &del_count);
+    assert(ret == retcode);
+    assert(del_count == count); 
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(mber);
+    fdb_array_destroy(array);
+}
+
+void test_zset_rank(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* smember, int retcode, int rank){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t *mber = fdb_slice_create(smember, strlen(smember));
+    int64_t member_rank = -1;
+    int ret = zset_rank(ctx, slot, key, mber, 0, &member_rank);
+    assert(ret == retcode);
+    assert(member_rank==rank);
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(mber); 
+}
+
+void test_zset_incr(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* smember, int retcode, double init, double by, double score){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t *mber = fdb_slice_create(smember, strlen(smember));
+    double member_score = 0.0;
+    int ret = zset_incr(ctx, slot, key, mber, init, by, &member_score);
+    assert(ret == FDB_OK);
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(mber);
+    assert(fabs(member_score-score)<=0.000001);
+}
+
+void test_zset_count(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, int retcode, double start, double end, uint8_t type, int64_t count){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    int64_t zset_count_ = 0;
+    int ret = zset_count(ctx, slot, key, start, end, type, &zset_count_);
+    assert(ret == retcode);
+    fdb_slice_destroy(key);
+    assert(count == zset_count_);
+}
+
+void test_zset_rem_range_by_rank(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, int retcode, int rank_start, int rank_end, int64_t count){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    int64_t rem_count = -1;
+    int ret = zset_rem_range_by_rank(ctx, slot, key, 0, 1, &rem_count);
+    assert(ret == FDB_OK);
+    assert(count == rem_count);
+    fdb_slice_destroy(key);
+}
+
+void test_zset_rem_range_by_score(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, int retcode, double sstart, double send, uint8_t type, int64_t count){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    int64_t rem_count = -1;
+    int ret = zset_rem_range_by_score(ctx, slot, key, sstart, send, type, &rem_count);
+    assert(ret == retcode);
+    if(ret == FDB_OK){
+        assert(count == rem_count);
+    }
+    fdb_slice_destroy(key);
 }
 
 
@@ -50,370 +164,126 @@ int main(int argc, char* argv[]){
     fdb_context_drop_slot(ctx, slots[1]);
     fdb_context_create_slot(ctx, slots[1]);
 
-    fdb_slice_t *key1_0 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber1 = fdb_slice_create("member1", strlen("member1"));
-    int ret = zset_add(ctx, slots[1], key1_0, mber1, 1.0048);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_0);
+
+    test_zset_add(ctx, slots[1], "key1", "member1", 1.0048, FDB_OK, 1);
+    test_zset_add(ctx, slots[1], "key1", "member2", 1.2234, FDB_OK, 1);
 
 
-    fdb_slice_t *key1_1 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber2 = fdb_slice_create("member2", strlen("member2"));
-    ret = zset_add(ctx, slots[1], key1_1, mber2, 1.2233);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_1);
+    test_zset_size(ctx, slots[1], "key1", FDB_OK, 2);
 
 
-    fdb_slice_t *key1_2 = fdb_slice_create("key1", strlen("key1"));
-    int64_t size = 0;
-    ret = zset_size(ctx, slots[1], key1_2, &size);
-    assert(ret == FDB_OK);
-    assert(size == 2);
-    fdb_slice_destroy(key1_2);
+    test_zset_add(ctx, slots[1], "key1", "member3", 7.223409, FDB_OK, 1);
+    test_zset_add(ctx, slots[1], "key1", "member4", 0.2231, FDB_OK, 1);
 
 
-    fdb_slice_t *key1_3 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber3 = fdb_slice_create("member3", strlen("member3"));
-    ret = zset_add(ctx, slots[1], key1_3, mber3, 0.22388);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_3);
-
-    fdb_slice_t *key1_4 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber4 = fdb_slice_create("member4", strlen("member4"));
-    ret = zset_add(ctx, slots[1], key1_3, mber4, 0.22388);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_4);
+    test_zset_size(ctx, slots[1], "key1", FDB_OK, 4);
 
 
-    fdb_slice_t *key1_5 = fdb_slice_create("key1", strlen("key1"));
-    size = 0;
-    ret = zset_size(ctx, slots[1], key1_5, &size);
-    assert(ret == FDB_OK);
-    assert(size == 4);
-    fdb_slice_destroy(key1_5);
 
-    double score2 = 0.0;
-    fdb_slice_t *key1_6 = fdb_slice_create("key1", strlen("key1"));
-    ret = zset_score(ctx, slots[1], key1_6, mber2, &score2);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_6);
-    assert(fabs(score2-1.2233) <= 0.000001);
+    test_zset_score(ctx, slots[1], "key1", "member2", FDB_OK, 1.2234);
+    test_zset_score(ctx, slots[1], "key1", "member3", FDB_OK, 7.223409);
 
-    double score3 = 0.0;
-    fdb_slice_t *key1_7 = fdb_slice_create("key1", strlen("key1"));
-    ret = zset_score(ctx, slots[1], key1_7, mber3, &score3);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_7);
-    assert(fabs(score3-0.22388) <= 0.000001);
-
-    fdb_slice_t *key1_8 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber5 = fdb_slice_create("member5", strlen("member5"));
-    ret = zset_add(ctx, slots[1], key1_8, mber5, 0.39218);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_8);
+    test_zset_add(ctx, slots[1], "key1", "member5", 0.39218, FDB_OK, 1);
+    test_zset_add(ctx, slots[1], "key1", "member6", -1.39218, FDB_OK, 1);
+    test_zset_add(ctx, slots[1], "key1", "member7", -20.99, FDB_OK, 1);
 
 
-    fdb_slice_t *key1_8_0 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber6 = fdb_slice_create("member6", strlen("member6"));
-    ret = zset_add(ctx, slots[1], key1_8_0, mber6, -1.39218);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_8_0);
+    test_zset_size(ctx, slots[1], "key1", FDB_OK, 7);
+
+    test_zset_rem(ctx, slots[1], "key1", "memberx", FDB_OK, 0);
+    test_zset_rem(ctx, slots[1], "key1", "member5", FDB_OK, 1);
 
 
-    fdb_slice_t *key1_8_1 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber7 = fdb_slice_create("member7", strlen("member7"));
-    ret = zset_add(ctx, slots[1], key1_8_1, mber7, -20.99);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_8_1);
+    test_zset_size(ctx, slots[1], "key1", FDB_OK, 6);
 
 
-    fdb_slice_t *key1_9 = fdb_slice_create("key1", strlen("key1"));
-    size = 0;
-    ret = zset_size(ctx, slots[1], key1_9, &size);
-    assert(ret == FDB_OK);
-    assert(size == 7);
-    fdb_slice_destroy(key1_9);
+    //print_zset_range(ctx, slots[1], "key1", 0);
+
+    test_zset_rank(ctx, slots[1], "key1", "member3", FDB_OK, 5);
 
 
-    fdb_slice_t *mberx = fdb_slice_create("memberx", strlen("memberx"));
-    fdb_slice_t *key1_12 = fdb_slice_create("key1", strlen("key1"));
-    ret = zset_rem(ctx, slots[1], key1_12, mberx);
-    assert(ret == FDB_OK_NOT_EXIST);
-    fdb_slice_destroy(key1_12);
+    test_zset_incr(ctx, slots[1], "key1", "member3", FDB_OK, 0.0, -40.1, 7.223409-40.1);
+
+    test_zset_rank(ctx, slots[1], "key1", "member3", FDB_OK, 0);
 
 
-    fdb_slice_t *key1_12_0 = fdb_slice_create("key1", strlen("key1"));
-    ret = zset_rem(ctx, slots[1], key1_12_0, mber5);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_12_0);
+    //print_zset_range(ctx, slots[1], "key1", 1);
 
 
-    fdb_slice_t *key1_12_1 = fdb_slice_create("key1", strlen("key1"));
-    size = 0;
-    ret = zset_size(ctx, slots[1], key1_12_1, &size);
-    assert(ret == FDB_OK);
-    assert(size == 6);
-    fdb_slice_destroy(key1_12_1);
+    //print_zset_range(ctx, slots[1], "key1", 0);
+
+    test_zset_add(ctx, slots[1], "key1", "member8", -1233.53, FDB_OK, 1);
+    test_zset_add(ctx, slots[1], "key1", "member9", -1778.5344, FDB_OK, 1);
 
 
-    fdb_slice_t *key1_12_2 = fdb_slice_create("key1", strlen("key1"));
-    int64_t rank = -1;
-    ret = zset_rank(ctx, slots[1], key1_12_2, mber3, 0, &rank);
-    assert(ret == FDB_OK);
-    assert(rank == 2);
-    fdb_slice_destroy(key1_12_2);
+
+    //print_zset_range(ctx, slots[1], "key1", 0);
+
+    //print_zset_scan(ctx, slots[1], "key1", -2000.0, 2000.0, 0, 0);
+
+    test_zset_count(ctx, slots[1], "key1", FDB_OK, -1778.5344, 1000.0, 0x1, 7);
+    test_zset_count(ctx, slots[1], "key1", FDB_OK, -1778.5344, -1778.5344, 0x0, 1);
 
 
-    fdb_slice_t *key1_12_3 = fdb_slice_create("key1", strlen("key1"));
-    score3 = 0.0;
-    ret = zset_incr(ctx, slots[1], key1_12_3, mber3, 0.0, -40.1, &score3);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_12_3);
-    
-
-    fdb_slice_t *key1_12_4 = fdb_slice_create("key1", strlen("key1"));
-    rank = -1;
-    ret = zset_rank(ctx, slots[1], key1_12_4, mber3, 0, &rank);
-    assert(ret == FDB_OK);
-    assert(rank == 0);
-    fdb_slice_destroy(key1_12_4);
+    test_zset_count(ctx, slots[1], "key1", FDB_OK, -1778.5344, -1778.5344, 0x1, 0);
+    test_zset_count(ctx, slots[1], "key1", FDB_OK, -1778.5344, -1778.5344, 0x2, 0);
+    test_zset_count(ctx, slots[1], "key1", FDB_OK, -1778.5344, -1778.5344, 0x1|0x2, 0);
 
 
-    fdb_slice_t *key1_13_1 = fdb_slice_create("key1", strlen("key1"));
-    //print_zset_range(ctx, slots[1], key1_13_1, 1);
-    fdb_slice_destroy(key1_13_1);
-    
-
-    fdb_slice_t *key1_13_2 = fdb_slice_create("key1", strlen("key1"));
-    //print_zset_range(ctx, slots[1], key1_13_2, 0);
-    fdb_slice_destroy(key1_13_2);
-
-    fdb_slice_t *key1_13_3 = fdb_slice_create("key1", strlen("key1"));
-    double score8 = 0.0;
-    fdb_slice_t *mber8 = fdb_slice_create("member8", strlen("member8"));
-    ret = zset_incr(ctx, slots[1], key1_13_3, mber8, 0.0, -40.1, &score8);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_13_3);
-
-    fdb_slice_t *key1_13_4 = fdb_slice_create("key1", strlen("key1"));
-    double score9 = 0.0;
-    fdb_slice_t *mber9 = fdb_slice_create("member9", strlen("member9"));
-    ret = zset_incr(ctx, slots[1], key1_13_4, mber9, 1.0, -40.1, &score9);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_13_4); 
-
-    fdb_slice_t *key1_13_5 = fdb_slice_create("key1", strlen("key1"));
-    //print_zset_range(ctx, slots[1], key1_13_5, 0);
-    fdb_slice_destroy(key1_13_5);
+    test_zset_count(ctx, slots[1], "key1", FDB_OK, -1500.5344, 1.0048, 0x1|0x2, 5);
+    test_zset_count(ctx, slots[1], "key1", FDB_OK, 100.0, 100.0, 0, 0);
 
 
-    fdb_slice_t *key1_13_6 = fdb_slice_create("key1", strlen("key1"));
-    //print_zset_scan(ctx, slots[1], key1_13_6, -100.0, 100.0, 0, 0);
-    fdb_slice_destroy(key1_13_6);
 
 
-    fdb_slice_t *key1_13_7 = fdb_slice_create("key1", strlen("key1"));
-    //print_zset_scan(ctx, slots[1], key1_13_7, 100.0, -100.0, 1, 0);
-    fdb_slice_destroy(key1_13_7);
+    test_zset_rem_range_by_rank(ctx, slots[1], "key1", FDB_OK, 0, 1, 2);
+
+    test_zset_size(ctx, slots[1], "key1", FDB_OK, 6);
+
+    //print_zset_range(ctx, slots[1], "key1", 0);
 
 
-    fdb_slice_t *key1_13_8 = fdb_slice_create("key1", strlen("key1"));
-    //print_zset_scan(ctx, slots[1], key1_13_8, -40.1, 1.2233, 0, (0x1 | 0x2));
-    fdb_slice_destroy(key1_13_8);
+    test_zset_rem_range_by_rank(ctx, slots[1], "key1", FDB_OK, -2, -1, 2);
 
-
-    fdb_slice_t *key1_13_9 = fdb_slice_create("key1", strlen("key1"));
-    //print_zset_scan(ctx, slots[1], key1_13_9, 1.2233, -40.1, 1, (0x1));
-    fdb_slice_destroy(key1_13_9);
-    
-    fdb_slice_t *key1_13_10 = fdb_slice_create("key1", strlen("key1"));
-    //print_zset_scan(ctx, slots[1], key1_13_10, 1.2233, -40.1, 1, 1);
-    fdb_slice_destroy(key1_13_10);
-   
-
-
-    fdb_slice_t *key1_14 = fdb_slice_create("key1", strlen("key1"));
-    int64_t count = 0;
-    ret = zset_count(ctx, slots[1], key1_14, -40.1, 1000.0, 0x1, &count);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_14);
-    assert(count == 7);
-
-
-    fdb_slice_t *key1_14_0 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_count(ctx, slots[1], key1_14_0, -40.1, -40.1, 0, &count);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_14_0);
-    assert(count == 1);
-
-
-    fdb_slice_t *key1_14_1 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_count(ctx, slots[1], key1_14_1, -40.1, -40.1, 0x1, &count);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_14_1);
-    assert(count == 0);
-
-
-    fdb_slice_t *key1_14_2 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_count(ctx, slots[1], key1_14_2, -40.1, -40.1, (0x1 | 0x2), &count);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_14_2);
-    assert(count == 0);
-
-
-    fdb_slice_t *key1_14_3 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_count(ctx, slots[1], key1_14_3, 100.0, 100.0, 0, &count);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_14_3);
-    assert(count == 0);
-
-    fdb_slice_t *key1_14_4 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_count(ctx, slots[1], key1_14_4, 100.0, 10011.0, 0, &count);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_14_4);
-    assert(count == 0);
-
-    
-
-    fdb_slice_t *key1_15 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_rem_range_by_rank(ctx, slots[1], key1_15, 0, 1, &count);
-    assert(ret == FDB_OK);
-    assert(count == 2);
-    fdb_slice_destroy(key1_15);
-
-    fdb_slice_t *key1_15_0 = fdb_slice_create("key1", strlen("key1"));
-    //print_zset_scan(ctx, slots[1], key1_15_0, -50.0, 100.0, 0, 0);
-    fdb_slice_destroy(key1_15_0);
-
-
-    fdb_slice_t *key1_15_1 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_rem_range_by_rank(ctx, slots[1], key1_15_1, -2, -1, &count);
-    assert(ret == FDB_OK);
-    assert(count == 2);
-    fdb_slice_destroy(key1_15_1);
-
-
-    fdb_slice_t *key1_15_2 = fdb_slice_create("key1", strlen("key1"));
-    //print_zset_scan(ctx, slots[1], key1_15_2, -50.0, 100.0, 0, 0);
-    fdb_slice_destroy(key1_15_2);
-
+    print_zset_range(ctx, slots[1], "key1", 0);
 
     //add more member for test rem_range_by_score
-    fdb_slice_t *key1_16 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber10 = fdb_slice_create("member10", strlen("member10"));
-    ret = zset_add(ctx, slots[1], key1_16, mber10, -200.99);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_16);
+    test_zset_add(ctx, slots[1], "key1", "member10", -200.99, FDB_OK, 1);
 
-    fdb_slice_t *key1_16_0 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber11 = fdb_slice_create("member11", strlen("member11"));
-    ret = zset_add(ctx, slots[1], key1_16_0, mber11, -130.99334);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_16_0);
+    test_zset_add(ctx, slots[1], "key1", "member11", -130.99334, FDB_OK, 1);
+
+    test_zset_add(ctx, slots[1], "key1", "member12", -110.7834, FDB_OK, 1);
+
+    test_zset_add(ctx, slots[1], "key1", "member13", 13.44434, FDB_OK, 1);
+    test_zset_add(ctx, slots[1], "key1", "member14", 73.888, FDB_OK, 1);
 
 
-    fdb_slice_t *key1_16_1 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber12 = fdb_slice_create("member12", strlen("member12"));
-    ret = zset_add(ctx, slots[1], key1_16_1, mber12, -110.7834);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_16_1);
+    test_zset_rem_range_by_score(ctx, slots[1], "key1", FDB_OK_RANGE_HAVE_NONE, 73.888, 73.888, 2, 0);
 
 
-    fdb_slice_t *key1_16_2 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber13 = fdb_slice_create("member13", strlen("member13"));
-    ret = zset_add(ctx, slots[1], key1_16_2, mber13, 13.44434);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_16_2);
+    test_zset_rem_range_by_score(ctx, slots[1], "key1", FDB_OK_RANGE_HAVE_NONE, -20.99, -20.99, 2, 0);
 
 
-    fdb_slice_t *key1_16_3 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber14 = fdb_slice_create("member14", strlen("member14"));
-    ret = zset_add(ctx, slots[1], key1_16_3, mber14, 73.888);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_16_3);
+    print_zset_scan(ctx, slots[1], "key1", -10000.0, 20000.0, 0, 0);
+
+    test_zset_rem_range_by_score(ctx, slots[1], "key1", FDB_OK, -2.0, 1400.0, 3, 6);
+
+    print_zset_scan(ctx, slots[1], "key1", -10000.0, 20000.0, 0, 0);
+
+    
+    test_zset_rem_range_by_score(ctx, slots[1], "key1", FDB_OK, -200.0, 1400.0, 3, 2);
 
 
-    fdb_slice_t *key1_16_4 = fdb_slice_create("key1", strlen("key1"));
-    print_zset_scan(ctx, slots[1], key1_16_4, -1000.0, 1000.0, 0, 0);
-    fdb_slice_destroy(key1_16_4);
-
-    fdb_slice_t *key1_16_5 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_rem_range_by_score(ctx, slots[1], key1_16_5, -20.99, -20.99, 2, &count);
-    assert(ret == FDB_OK_RANGE_HAVE_NONE);
-    fdb_slice_destroy(key1_16_5);
-
-    fdb_slice_t *key1_16_6 = fdb_slice_create("key1", strlen("key1"));
-    print_zset_scan(ctx, slots[1], key1_16_6, -1000.0, 1000.0, 0, 0);
-    fdb_slice_destroy(key1_16_6);
-
-    fdb_slice_t *key1_16_7 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_rem_range_by_score(ctx, slots[1], key1_16_7, -2.0, 1400.0, 3, &count);
-    assert(ret == FDB_OK);
-    assert(count == 4);
-    fdb_slice_destroy(key1_16_7);
+    test_zset_size(ctx, slots[1], "key1", FDB_OK, 1);
 
 
-    fdb_slice_t *key1_16_8 = fdb_slice_create("key1", strlen("key1"));
-    print_zset_scan(ctx, slots[1], key1_16_8, -1000.0, 1000.0, 0, 0);
-    fdb_slice_destroy(key1_16_8);
+    print_zset_scan(ctx, slots[1], "key1", -10000.0, 20000.0, 0, 0);
+    test_zset_rem_range_by_score(ctx, slots[1], "key1", FDB_OK, -2000.0, 1400.0, 3, 1);
 
 
-    fdb_slice_t *key1_16_9 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_rem_range_by_score(ctx, slots[1], key1_16_9, -200.0, 1400.0, 3, &count);
-    assert(ret == FDB_OK);
-    assert(count == 4);
-    fdb_slice_destroy(key1_16_9);
+    test_zset_size(ctx, slots[1], "key1", FDB_OK, 0);
 
 
-    fdb_slice_t *key1_16_10 = fdb_slice_create("key1", strlen("key1"));
-    size = -1;
-    ret = zset_size(ctx, slots[1], key1_16_10, &size);
-    assert(ret == FDB_OK);
-    assert(size == 1);
-    fdb_slice_destroy(key1_16_10);
-
-
-    fdb_slice_t *key1_16_11 = fdb_slice_create("key1", strlen("key1"));
-    count = -1;
-    ret = zset_rem_range_by_score(ctx, slots[1], key1_16_11, -2000.0, 1400.0, 3, &count);
-    assert(ret == FDB_OK);
-    assert(count == 1);
-    fdb_slice_destroy(key1_16_11);
-
-
-    fdb_slice_t *key1_16_12 = fdb_slice_create("key1", strlen("key1"));
-    size = -1;
-    ret = zset_size(ctx, slots[1], key1_16_12, &size);
-    assert(ret == FDB_OK);
-    assert(size == 0);
-    fdb_slice_destroy(key1_16_12);
-
-
-    fdb_slice_destroy(mber1);
-    fdb_slice_destroy(mber2);
-    fdb_slice_destroy(mber3);
-    fdb_slice_destroy(mber4);
-    fdb_slice_destroy(mber5);
-    fdb_slice_destroy(mber6);
-    fdb_slice_destroy(mber7);
-    fdb_slice_destroy(mber8);
-    fdb_slice_destroy(mber9);
-    fdb_slice_destroy(mber10);
-    fdb_slice_destroy(mber11);
-    fdb_slice_destroy(mber12);
-    fdb_slice_destroy(mber13);
-    fdb_slice_destroy(mber14);
-    fdb_slice_destroy(mberx);
     fdb_context_destroy(ctx);
     return 0;
 }

@@ -71,6 +71,20 @@ extern int fdb_incrby(fdb_context_t* context,
                int64_t by,
                int64_t *result);
 
+extern int fdb_hset(fdb_context_t* context,
+                    uint64_t id,
+                    fdb_item_t* key,
+                    fdb_item_t* fld,
+                    fdb_item_t* val,
+                    int64_t* count);
+
+extern int fdb_hget(fdb_context_t* context,
+                    uint64_t id,
+                    fdb_item_t* key,
+                    fdb_item_t* fld,
+                    fdb_item_t** pval);
+
+
 
 #ifdef __cplusplus
 }

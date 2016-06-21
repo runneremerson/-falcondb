@@ -23,13 +23,15 @@ int hash_getall(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_
 
 int hash_mget(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* fields, fdb_array_t** rets);
 
+int hash_mset(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* fvs, int64_t* count);
+
 int hash_keys(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t** rets);
 
 int hash_vals(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t** rets);
 
-int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value);
+int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value, int64_t* count);
 
-int hash_setnx(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value);
+int hash_setnx(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value, int64_t* count);
 
 int hash_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field);
 
@@ -37,6 +39,6 @@ int hash_length(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int6
 
 int hash_incr(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, int64_t init, int64_t by, int64_t* val);
 
-int hash_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field);
+int hash_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* fields, int64_t* count);
 
 #endif //FDB_T_HASH_H

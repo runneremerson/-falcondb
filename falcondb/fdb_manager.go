@@ -359,6 +359,15 @@ func (slot *FdbSlot) HGet(key, field []byte) ([]byte, error) {
 }
 
 func (slot *FdbSlot) HSet(key, field, value []byte) (int64, error) {
+
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	//csKey := (*C.char)(unsafe.Pointer(&key[0]))
+	//csField := (*C.char) (unsafe.Pointer(&field[0]))
+	//csValue := (*C.char)(unsafe.Pointer(&value[0]))
+
 	return 0, nil
 }
 func (slot *FdbSlot) HMget(key []byte, fields ...[]byte) ([][]byte, error) {

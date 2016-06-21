@@ -28,6 +28,7 @@ int main(int argc, char* argv[]){
     fdb_context_drop_slot(ctx, slots[1]);
     fdb_context_create_slot(ctx, slots[1]);
 
+    /*
     fdb_slice_t *key1_0 = fdb_slice_create("key1", strlen("key1"));
     fdb_slice_t *mber1 = fdb_slice_create("member1", strlen("member1"));
     int ret = set_add(ctx, slots[1], key1_0, mber1);
@@ -159,15 +160,9 @@ int main(int argc, char* argv[]){
     assert(ret == FDB_OK);
     assert(size == 5);
     fdb_slice_destroy(key1_11);
+    */
 
 
-    fdb_slice_destroy(mber1);
-    fdb_slice_destroy(mber2);
-    fdb_slice_destroy(mber3);
-    fdb_slice_destroy(mber3_0);
-    fdb_slice_destroy(mber3_1);
-    fdb_slice_destroy(mber4);
-    fdb_slice_destroy(mberx);
     fdb_context_destroy(ctx);
     return 0;
 }

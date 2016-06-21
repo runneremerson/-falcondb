@@ -17,9 +17,9 @@ void encode_zscore_key(const char* key, size_t keylen, const char* member, size_
 int decode_zscore_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t** pkey, fdb_slice_t** pmember, double* pscore);
 
 
-int zset_add(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, double score);
+int zset_add(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* sms, int64_t* count);
 
-int zset_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member);
+int zset_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* members, int64_t* count);
 
 int zset_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* size);
 

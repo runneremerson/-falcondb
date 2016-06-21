@@ -380,56 +380,61 @@ int set_member_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key
 }
 
 
-int set_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member){
+int set_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* members, int64_t* count){
     int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_SET);
     if(retval != FDB_OK){
         return retval;
     }
-    int ret = srem_one(context, slot, key, member);
-    if(ret >=0){
-        if(ret > 0){
-            if(set_incr_size(context, slot, key, -1) < 0 ){
-                return FDB_ERR;
-            } 
+
+    int64_t _count = 0;
+    for(size_t i=0; i<members->length_; ++i){ 
+        fdb_slice_t *member = (fdb_slice_t*)(fdb_array_at(members, i)->val_.vval_);
+        int ret = srem_one(context, slot, key, member);
+        if(ret >= 0){
+            if(ret > 0){
+                if(set_incr_size(context, slot, key, -1)== 0){
+                    _count++;
+                }
+            }
+
             char *errptr = NULL;
             fdb_slot_writebatch_commit(context, slot, &errptr);
             if(errptr != NULL){
                 fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", errptr, __func__);
                 rocksdb_free(errptr);
-                return FDB_ERR;
             }
-            return FDB_OK;
         }
-        retval = FDB_OK_NOT_EXIST;
-    }else{
-        retval = FDB_ERR;
     }
-    return retval;
+
+    *count = _count;
+    return FDB_OK;
 }
 
-int set_add(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member){
+int set_add(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t* members, int64_t* count){
     int retval = keys_enc(context, slot, key, FDB_DATA_TYPE_SET);
     if(retval != FDB_OK){
         return retval;
     }
 
-    int ret = sset_one(context, slot, key, member);
-    if(ret >=0){
-        if(ret > 0){
-            if(set_incr_size(context, slot, key, 1) < 0){
-                return FDB_ERR;
+    int64_t _count = 0;
+    for(size_t i=0; i<members->length_; ++i){ 
+        fdb_slice_t *member = (fdb_slice_t*)(fdb_array_at(members, i)->val_.vval_);
+        int ret = sset_one(context, slot, key, member);
+        if(ret >=0){
+            if(ret > 0){
+                if(set_incr_size(context, slot, key, 1) == 0){
+                    ++_count;
+                }
+            }
+            char *errptr = NULL;
+            fdb_slot_writebatch_commit(context, slot, &errptr);
+            if(errptr != NULL){
+                fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", __func__, errptr);
+                rocksdb_free(errptr);
             }
         }
-        char *errptr = NULL;
-        fdb_slot_writebatch_commit(context, slot, &errptr);
-        if(errptr != NULL){
-            fprintf(stderr, "%s fdb_slot_writebatch_commit fail %s.\n", __func__, errptr);
-            rocksdb_free(errptr);
-            return FDB_ERR;
-        }
-        retval = FDB_OK;
-    }else{
-        retval = FDB_ERR;
     }
-    return retval;
+
+    *count = _count;
+    return FDB_OK;
 }
