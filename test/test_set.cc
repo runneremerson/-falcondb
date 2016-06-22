@@ -8,7 +8,8 @@
 #include <string.h>
 #include <math.h>
 
-void print_set(fdb_context_t* ctx, fdb_slot_t* slot, fdb_slice_t* key){
+void print_set(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
     fdb_array_t *set = fdb_array_create(8);
     int ret = set_members(ctx, slot, key, &set);
     assert(ret == FDB_OK);
@@ -19,6 +20,60 @@ void print_set(fdb_context_t* ctx, fdb_slot_t* slot, fdb_slice_t* key){
         fdb_slice_destroy(sl); 
     }
     fdb_array_destroy(set);
+    fdb_slice_destroy(key);
+}
+
+void test_set_add(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* smember, int retcode, int64_t count){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t *mber = fdb_slice_create(smember, strlen(smember));
+    
+    fdb_array_t *members = fdb_array_create(2);
+    fdb_val_node_t *member_node = fdb_val_node_create();
+    member_node->val_.vval_ = mber;
+
+    fdb_array_push_back(members, member_node);
+
+    int64_t add_count = 0;
+    int ret = set_add(ctx, slot, key, members, &add_count);
+    assert(retcode == ret);
+    assert(add_count == count);
+
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(mber);
+}
+
+void test_set_size(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, int retcode, int64_t size){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey));
+    int64_t set_size_ = -1;
+    int ret = set_size(ctx, slot, key, &set_size_);
+    assert(retcode == ret);
+    assert(size == set_size_);
+    fdb_slice_destroy(key);
+}
+
+void test_set_rem(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* smember, int retcode, int64_t count){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey)); 
+    fdb_slice_t *mber = fdb_slice_create(smember, strlen(smember));
+    fdb_val_node_t *member_node = fdb_val_node_create();
+    member_node->val_.vval_ = mber;
+    fdb_array_t *members = fdb_array_create(2);
+    fdb_array_push_back(members, member_node);
+    int64_t rem_count = 0;
+    int ret = set_rem(ctx, slot, key, members, &rem_count);
+    assert(ret == retcode);
+    assert(count == rem_count);
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(mber);
+    fdb_array_destroy(members);
+}
+
+void test_set_member_exists(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* smember, int retcode){
+    fdb_slice_t *key = fdb_slice_create(skey, strlen(skey)); 
+    fdb_slice_t *mber = fdb_slice_create(smember, strlen(smember));
+    int ret = set_member_exists(ctx, slot, key, mber);
+    assert(ret == retcode);
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(mber);
 }
 
 int main(int argc, char* argv[]){
@@ -28,140 +83,46 @@ int main(int argc, char* argv[]){
     fdb_context_drop_slot(ctx, slots[1]);
     fdb_context_create_slot(ctx, slots[1]);
 
-    /*
-    fdb_slice_t *key1_0 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber1 = fdb_slice_create("member1", strlen("member1"));
-    int ret = set_add(ctx, slots[1], key1_0, mber1);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_0);
 
+    test_set_add(ctx, slots[1], "key1", "member1", FDB_OK, 1);
 
-    fdb_slice_t *key1_0_0 = fdb_slice_create("key1", strlen("key1"));
-    int64_t size = -1;
-    ret = set_size(ctx, slots[1], key1_0_0, &size);
-    assert(ret == FDB_OK);
-    assert(size == 1);
-    fdb_slice_destroy(key1_0_0);
+    test_set_size(ctx, slots[1], "key1", FDB_OK, 1);
 
-    fdb_slice_t *key1_0_1 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_rem(ctx, slots[1], key1_0_1, mber1);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_0_1);
+    test_set_rem(ctx, slots[1], "key1", "member1", FDB_OK, 1);
 
-    fdb_slice_t *key1_1 = fdb_slice_create("key1", strlen("key1"));
-    size = -1;
-    ret = set_size(ctx, slots[1], key1_1, &size);
-    assert(ret == FDB_OK);
-    assert(size == 0);
-    fdb_slice_destroy(key1_1);
+    test_set_size(ctx, slots[1], "key1", FDB_OK, 0);
 
+    test_set_add(ctx, slots[1], "key1", "member1", FDB_OK, 1);
 
+    test_set_add(ctx, slots[1], "key1", "member2", FDB_OK, 1);
 
-    fdb_slice_t *key1_1_0 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_add(ctx, slots[1], key1_1_0, mber1);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_1_0);
+    test_set_add(ctx, slots[1], "key1", "member2", FDB_OK, 0);
 
+    test_set_member_exists(ctx, slots[1], "key1", "member2", FDB_OK);
 
+    test_set_member_exists(ctx, slots[1], "key1", "memberx", FDB_OK_NOT_EXIST);
 
-    fdb_slice_t *key1_2 = fdb_slice_create("key1", strlen("key1"));
-    fdb_slice_t *mber2 = fdb_slice_create("member2", strlen("member2"));
-    ret = set_add(ctx, slots[1], key1_2, mber2);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_2);
+    test_set_size(ctx, slots[1], "key1", FDB_OK, 2);
 
+    test_set_add(ctx, slots[1], "key1", "member3", FDB_OK, 1);
 
-    fdb_slice_t *key1_2_0 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_add(ctx, slots[1], key1_2_0, mber2);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_2_0);
+    test_set_add(ctx, slots[1], "key1", "member30", FDB_OK, 1);
 
-    fdb_slice_t *key1_2_1 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_member_exists(ctx, slots[1], key1_2_1, mber2);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_2_1);
+    test_set_add(ctx, slots[1], "key1", "member31", FDB_OK, 1);
 
+    test_set_add(ctx, slots[1], "key1", "member4", FDB_OK, 1);
 
-    fdb_slice_t *mberx = fdb_slice_create("memberx", strlen("memberx"));
-    fdb_slice_t *key1_2_2 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_member_exists(ctx, slots[1], key1_2_2, mberx);
-    assert(ret == FDB_OK_NOT_EXIST);
-    fdb_slice_destroy(key1_2_2);
+    test_set_size(ctx, slots[1], "key1", FDB_OK, 6);
 
+    print_set(ctx, slots[1], "key1");
 
-    fdb_slice_t *key1_3 = fdb_slice_create("key1", strlen("key1"));
-    size = -1;
-    ret = set_size(ctx, slots[1], key1_3, &size);
-    assert(ret == FDB_OK);
-    assert(size == 2);
-    fdb_slice_destroy(key1_3);
+    test_set_rem(ctx, slots[1], "key1", "member1", FDB_OK, 1);
 
+    test_set_rem(ctx, slots[1], "key1", "member1", FDB_OK, 0);
 
-    fdb_slice_t *mber3 = fdb_slice_create("member3", strlen("member3"));
-    fdb_slice_t *key1_4 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_add(ctx, slots[1], key1_4, mber3);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_4);
-
-
-
-    fdb_slice_t *mber3_0 = fdb_slice_create("member30", strlen("member30"));
-    fdb_slice_t *key1_4_0 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_add(ctx, slots[1], key1_4_0, mber3_0);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_4_0);
-
-
-    fdb_slice_t *mber3_1 = fdb_slice_create("member31", strlen("member31"));
-    fdb_slice_t *key1_4_1 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_add(ctx, slots[1], key1_4_1, mber3_1);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_4_1);
-
-    fdb_slice_t *mber4 = fdb_slice_create("member4", strlen("member4"));
-    fdb_slice_t *key1_5_0 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_add(ctx, slots[1], key1_5_0, mber4);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_5_0);
-
-
-    fdb_slice_t *key1_6 = fdb_slice_create("key1", strlen("key1"));
-    size = -1;
-    ret = set_size(ctx, slots[1], key1_6, &size);
-    assert(ret == FDB_OK);
-    assert(size == 6);
-    fdb_slice_destroy(key1_6);
-
-    fdb_slice_t *key1_7 = fdb_slice_create("key1", strlen("key1"));
-    print_set(ctx, slots[1], key1_7);
-    fdb_slice_destroy(key1_7);
-
-
-    fdb_slice_t *key1_8 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_rem(ctx, slots[1], key1_8, mber1);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_8);
-
-
-    fdb_slice_t *key1_9 = fdb_slice_create("key1", strlen("key1"));
-    ret = set_rem(ctx, slots[1], key1_9, mber1);
-    assert(ret == FDB_OK_NOT_EXIST);
-    fdb_slice_destroy(key1_9);
-
-
-    fdb_slice_t *key1_10 = fdb_slice_create("key1", strlen("key1"));
-    print_set(ctx, slots[1], key1_10);
-    fdb_slice_destroy(key1_10);
-
-
-    fdb_slice_t *key1_11 = fdb_slice_create("key1", strlen("key1"));
-    size = -1;
-    ret = set_size(ctx, slots[1], key1_11, &size);
-    assert(ret == FDB_OK);
-    assert(size == 5);
-    fdb_slice_destroy(key1_11);
-    */
-
+    print_set(ctx, slots[1], "key1");
+    
+    test_set_size(ctx, slots[1], "key1", FDB_OK, 5);
 
     fdb_context_destroy(ctx);
     return 0;

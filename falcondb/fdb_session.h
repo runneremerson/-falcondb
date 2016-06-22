@@ -62,7 +62,8 @@ extern int fdb_mget(fdb_context_t* context,
 
 extern int fdb_del(fdb_context_t* context, 
             uint64_t id,
-            fdb_item_t* key);
+            fdb_item_t* key,
+            int64_t* count);
 
 extern int fdb_incrby(fdb_context_t* context,
                uint64_t id,
@@ -83,6 +84,59 @@ extern int fdb_hget(fdb_context_t* context,
                     fdb_item_t* key,
                     fdb_item_t* fld,
                     fdb_item_t** pval);
+
+extern int fdb_hsetnx(fdb_context_t* context,
+                      uint64_t id,
+                      fdb_item_t* key,
+                      fdb_item_t* fld,
+                      fdb_item_t* val,
+                      int64_t* count);
+
+extern int fdb_hmget(fdb_context_t* context,
+                     uint64_t id,
+                     fdb_item_t* key,
+                     size_t length,
+                     fdb_item_t* flds,
+                     fdb_item_t** pvals);
+
+extern int fdb_hdel(fdb_context_t* context,
+                    uint64_t id,
+                    fdb_item_t* key,
+                    size_t length,
+                    fdb_item_t* flds,
+                    int64_t *count);
+
+extern int fdb_hlen(fdb_context_t* context,
+                    uint64_t id,
+                    fdb_item_t* key,
+                    int64_t *length);
+
+
+extern int fdb_hincrby(fdb_context_t* context,
+                       uint64_t id,
+                       fdb_item_t* key,
+                       fdb_item_t* fld,
+                       int64_t by,
+                       int64_t* result);
+
+extern int fdb_hexists(fdb_context_t* context,
+                       uint64_t id,
+                       fdb_item_t* key,
+                       fdb_item_t* fld,
+                       int64_t* count);
+
+extern int fdb_hmset(fdb_context_t* context,
+                     uint64_t id,
+                     fdb_item_t* key,
+                     size_t length,
+                     fdb_item_t* fvs,
+                     int64_t* count);
+
+extern int fdb_hgetall(fdb_context_t* context,
+                       uint64_t id,
+                       fdb_item_t* key,
+                       fdb_item_t** pfvs,
+                       int64_t* length);
 
 
 

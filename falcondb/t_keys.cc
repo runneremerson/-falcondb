@@ -429,14 +429,14 @@ int keys_exs(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t
     return retval;
 }
 
-int keys_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key){
+int keys_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* count){
     int retval = 0;
 
     keys_val_t *kval = NULL;
     int ret = get_keys_val(context, slot, key, &kval);
     if(ret == 1){
         if(kval->stat_!=FDB_KEY_STAT_NORMAL){
-            retval = FDB_OK_NOT_EXIST;
+            *count = 0;
         }else{
             if(kval->type_ == FDB_DATA_TYPE_STRING){
                 if(kval->slice_!=NULL){
@@ -451,10 +451,12 @@ int keys_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key){
                 retval = FDB_ERR;
                 goto end;
             }
-            retval = FDB_OK;
+            *count = 1;
         }
+        retval = FDB_OK;
     }else if(ret == 0){
-        retval = FDB_OK_NOT_EXIST;
+        retval = FDB_OK;
+        *count = 0;
     }else{
         retval = FDB_ERR; 
     }

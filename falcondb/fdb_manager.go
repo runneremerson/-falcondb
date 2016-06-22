@@ -266,9 +266,11 @@ func (slot *FdbSlot) Del(keys ...[]byte) (int64, error) {
 		item_key.data_ = csKey
 		item_key.data_len_ = C.uint64_t(len(keys[i]))
 
-		ret := C.fdb_del(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key)
+		count := C.int64_t(0)
+
+		ret := C.fdb_del(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &count)
 		if int(ret) == 0 {
-			cnt++
+			cnt += int64(count)
 		}
 	}
 
@@ -335,8 +337,8 @@ func (slot *FdbSlot) MGet(keys ...[]byte) ([][]byte, error) {
 	defer C.destroy_fdb_item_array(item_vals, C.size_t(len(keys)))
 
 	if int(ret) == 0 {
-		var value FdbValue
 		retvalues := make([][]byte, len(keys))
+		var value FdbValue
 		for i := 0; i < len(keys); i++ {
 			ConvertCItemPointer2GoByte(item_vals, i, &value)
 			retvalues[i] = value.Val
@@ -351,34 +353,134 @@ func (slot *FdbSlot) MGet(keys ...[]byte) ([][]byte, error) {
 }
 
 func (slot *FdbSlot) Exists(key []byte) (int64, error) {
+
 	return 0, nil
 }
 
 func (slot *FdbSlot) HGet(key, field []byte) ([]byte, error) {
-	return nil, nil
-}
-
-func (slot *FdbSlot) HSet(key, field, value []byte) (int64, error) {
-
 	lock := slot.fetchKeysLock(string(key))
 	lock.acquire()
 	defer lock.release()
 
-	//csKey := (*C.char)(unsafe.Pointer(&key[0]))
-	//csField := (*C.char) (unsafe.Pointer(&field[0]))
-	//csValue := (*C.char)(unsafe.Pointer(&value[0]))
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
 
-	return 0, nil
+	var item_fld C.fdb_item_t
+	item_fld.data_ = (*C.char)(unsafe.Pointer(&field[0]))
+	item_fld.data_len_ = C.uint64_t(len(field))
+
+	var pitem_val *C.fdb_item_t
+	pitem_val = (*C.fdb_item_t)(CNULL)
+
+	ret := C.fdb_hget(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_fld, &pitem_val)
+	defer C.destroy_fdb_item_array(pitem_val, C.size_t(1))
+
+	if int(ret) == 0 {
+		var val FdbValue
+		ConvertCItemPointer2GoByte(pitem_val, 0, &val)
+		return val.Val, nil
+	}
+
+	return nil, &FdbError{retcode: int(ret)}
+}
+
+func (slot *FdbSlot) HSet(key, field, value []byte) (int64, error) {
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	var item_fld C.fdb_item_t
+	item_fld.data_ = (*C.char)(unsafe.Pointer(&field[0]))
+	item_fld.data_len_ = C.uint64_t(len(field))
+
+	var item_val C.fdb_item_t
+	item_val.data_ = (*C.char)(unsafe.Pointer(&value[0]))
+	item_val.data_len_ = C.uint64_t(len(value))
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_hset(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_fld, &item_val, &cnt)
+	if int(ret) == 0 {
+		return int64(cnt), nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
 func (slot *FdbSlot) HMget(key []byte, fields ...[]byte) ([][]byte, error) {
-	return nil, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	item_flds := make([]C.fdb_item_t, len(fields))
+	for i := 0; i < len(fields); i++ {
+		item_flds[i].data_ = (*C.char)(unsafe.Pointer(&(fields[i][0])))
+		item_flds[i].data_len_ = C.uint64_t(len(fields[i]))
+	}
+	item_vals := (*C.fdb_item_t)(CNULL)
+
+	ret := C.fdb_hmget(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, C.size_t(len(fields)), (*C.fdb_item_t)(unsafe.Pointer(&item_flds[0])), &item_vals)
+	if int(ret) == 0 {
+		retvalues := make([][]byte, len(fields))
+		var value FdbValue
+		for i := 0; i < len(fields); i++ {
+			ConvertCItemPointer2GoByte(item_vals, i, &value)
+			retvalues[i] = value.Val
+			if !(value.Ret == 0 || value.Ret == FDB_OK_NOT_EXIST) {
+				return nil, &FdbError{retcode: value.Ret}
+			}
+		}
+		return retvalues, nil
+	}
+
+	return nil, &FdbError{retcode: int(ret)}
 }
-func (slot *FdbSlot) HDel(key []byte, args ...[]byte) (int64, error) {
-	return 0, nil
+func (slot *FdbSlot) HDel(key []byte, fields ...[]byte) (int64, error) {
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	item_flds := make([]C.fdb_item_t, len(fields))
+	for i := 0; i < len(fields); i++ {
+		item_flds[i].data_ = (*C.char)(unsafe.Pointer(&(fields[i][0])))
+		item_flds[i].data_len_ = C.uint64_t(len(fields[i]))
+	}
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_hdel(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, C.size_t(len(fields)), (*C.fdb_item_t)(unsafe.Pointer(&item_flds[0])), &cnt)
+	if int(ret) == 0 {
+		return int64(cnt), nil
+	}
+
+	return 0, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) HLen(key []byte) (int64, error) {
-	return 0, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	length := C.int64_t(0)
+	ret := C.fdb_hlen(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &length)
+
+	if int(ret) == 0 {
+		return int64(length), nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) HIncrByFloat(key []byte, field []byte, delta float64) (float64, error) {
@@ -386,22 +488,132 @@ func (slot *FdbSlot) HIncrByFloat(key []byte, field []byte, delta float64) (floa
 }
 
 func (slot *FdbSlot) HIncrBy(key []byte, field []byte, delta int64) (int64, error) {
-	return 0, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	var item_fld C.fdb_item_t
+	item_fld.data_ = (*C.char)(unsafe.Pointer(&field[0]))
+	item_fld.data_len_ = C.uint64_t(len(field))
+
+	result := C.int64_t(0)
+	ret := C.fdb_hincrby(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_fld, C.int64_t(delta), &result)
+	if int(ret) == 0 {
+		return int64(result), nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) HExists(key, field []byte) (int64, error) {
-	return 0, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	var item_fld C.fdb_item_t
+	item_fld.data_ = (*C.char)(unsafe.Pointer(&field[0]))
+	item_fld.data_len_ = C.uint64_t(len(field))
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_hexists(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_fld, &cnt)
+	if int(cnt) == 0 {
+		return int64(cnt), nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) HSetNX(key, field, value []byte) (int64, error) {
-	return 0, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	var item_fld C.fdb_item_t
+	item_fld.data_ = (*C.char)(unsafe.Pointer(&field[0]))
+	item_fld.data_len_ = C.uint64_t(len(field))
+
+	var item_val C.fdb_item_t
+	item_val.data_ = (*C.char)(unsafe.Pointer(&value[0]))
+	item_val.data_len_ = C.uint64_t(len(value))
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_hsetnx(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_fld, &item_val, &cnt)
+	if int(ret) == 0 {
+		return int64(cnt), nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) HGetAll(key []byte) ([][]byte, [][]byte, error) {
-	return nil, nil, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	item_fvs := (*C.fdb_item_t)(CNULL)
+	length := C.int64_t(0)
+	ret := C.fdb_hgetall(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_fvs, &length)
+	if int(ret) == 0 {
+		_length := int(int(length) / 2)
+		ind := 0
+		retfields := make([][]byte, _length)
+		retvalues := make([][]byte, _length)
+		var value FdbValue
+		for i := 0; i < _length; i++ {
+			ConvertCItemPointer2GoByte(item_fvs, ind, &value)
+			retfields[i] = value.Val
+			ind++
+
+			ConvertCItemPointer2GoByte(item_fvs, ind, &value)
+			retvalues[i] = value.Val
+			ind++
+		}
+		return retfields, retvalues, nil
+	}
+
+	return nil, nil, &FdbError{retcode: int(ret)}
 }
+
 func (slot *FdbSlot) HMset(key []byte, fields, values [][]byte) (int64, error) {
-	return 0, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	item_fvs := make([]C.fdb_item_t, len(fields)*2)
+	ind := 0
+	for i := 0; i < len(fields); i++ {
+		item_fvs[ind].data_ = (*C.char)(unsafe.Pointer(&(fields[i][0])))
+		item_fvs[ind].data_len_ = C.uint64_t(len(fields[i]))
+		ind++
+
+		item_fvs[ind].data_ = (*C.char)(unsafe.Pointer(&(values[i][0])))
+		item_fvs[ind].data_len_ = C.uint64_t(len(values[i]))
+		ind++
+	}
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_hmset(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, C.size_t(ind), (*C.fdb_item_t)(unsafe.Pointer(&item_fvs[0])), &cnt)
+	if int(ret) == 0 {
+		return int64(cnt), nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) ZAdd(key []byte, members [][]byte, scores []float64) (int64, error) {

@@ -33,8 +33,10 @@ int main(int argc, char* argv[]){
     fdb_slice_destroy(val1_get);
 
     //slots[0] keys_del
-    ret = keys_del(ctx, slots[0], key1);
+    int64_t del_count = 0;
+    ret = keys_del(ctx, slots[0], key1, &del_count);
     assert(ret == FDB_OK);
+    assert(del_count == 1);
     ret = keys_get_string(ctx, slots[0], key1, &val1_get);
     assert(ret == FDB_OK_NOT_EXIST);
 

@@ -210,7 +210,7 @@ int fdb_mget(fdb_context_t* context,
              uint64_t id,
              size_t length,
              fdb_item_t* keys,
-             fdb_item_t** vals){
+             fdb_item_t** pvals){
     int retval = 0;
     fdb_slot_t* slot = get_slot(context, id);
     fdb_array_t *keys_array = fdb_array_create(16);
@@ -231,10 +231,13 @@ int fdb_mget(fdb_context_t* context,
             }else{
                 decode_slice_value(&vals_[i], (fdb_slice_t*)NULL, n_val->retval_);        
             }
-            fdb_val_node_t *n_key = fdb_array_at(keys_array, i);
-            fdb_slice_destroy(n_key->val_.vval_);
         }
-        *vals = vals_;
+        *pvals = vals_;
+    }
+
+    for(size_t i=0; i<length; ++i){
+        fdb_val_node_t *n_key = fdb_array_at(keys_array, i);
+        fdb_slice_destroy(n_key->val_.vval_);
     }
 
     fdb_array_destroy(keys_array);
@@ -245,11 +248,15 @@ int fdb_mget(fdb_context_t* context,
 
 int fdb_del(fdb_context_t* context, 
             uint64_t id,
-            fdb_item_t* key){
+            fdb_item_t* key,
+            int64_t* count){
     fdb_slot_t* slot = get_slot(context, id);
     fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
-    int retval = keys_del(context, slot, slice_key);
-
+    int64_t _count = 0;
+    int retval = keys_del(context, slot, slice_key, &_count);
+    if(retval == FDB_OK){
+        *count = _count; 
+    }
     fdb_slice_destroy(slice_key);
     return retval;
 }
@@ -281,7 +288,34 @@ int fdb_hset(fdb_context_t* context,
     fdb_slice_t *slice_fld = fdb_slice_create(fld->data_, fld->data_len_);
     fdb_slice_t *slice_val = fdb_slice_create(val->data_, val->data_len_);
 
-    int retval = hash_set(context, slot, slice_key, slice_fld, slice_val, count);
+    int64_t _count = 0;
+    int retval = hash_set(context, slot, slice_key, slice_fld, slice_val, &_count);
+    if(retval == FDB_OK){
+        *count = _count;
+    }
+
+    fdb_slice_destroy(slice_key);
+    fdb_slice_destroy(slice_val);
+    fdb_slice_destroy(slice_fld);
+    return retval;
+}
+
+int fdb_hsetnx(fdb_context_t* context,
+               uint64_t id,
+               fdb_item_t* key,
+               fdb_item_t* fld,
+               fdb_item_t* val,
+               int64_t* count){
+    fdb_slot_t* slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_slice_t *slice_fld = fdb_slice_create(fld->data_, fld->data_len_);
+    fdb_slice_t *slice_val = fdb_slice_create(val->data_, val->data_len_);
+
+    int64_t _count = 0;
+    int retval = hash_setnx(context, slot, slice_key, slice_fld, slice_val, &_count);
+    if(retval == FDB_OK){
+        *count = _count;
+    }
 
     fdb_slice_destroy(slice_key);
     fdb_slice_destroy(slice_val);
@@ -320,9 +354,39 @@ int fdb_hmget(fdb_context_t* context,
               fdb_item_t* key,
               size_t length,
               fdb_item_t* flds,
-              fdb_item_t** pvals){
-                  
-    return 0;
+              fdb_item_t** pvals){              
+    fdb_slot_t* slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_array_t *flds_array = fdb_array_create(8), *rets_array = NULL;
+    for(size_t i=0; i<length; ++i){
+        fdb_val_node_t *n_fld = fdb_val_node_create();
+        n_fld->val_.vval_ = fdb_slice_create(flds[i].data_, flds[i].data_len_);
+        fdb_array_push_back(flds_array, n_fld);
+    }
+    int retval = hash_mget(context, slot, slice_key, flds_array, &rets_array);
+    if(retval == FDB_OK){
+        fdb_item_t *vals_ = create_fdb_item_array(length);
+        for(size_t i=0; i<length; ++i){
+            fdb_val_node_t *n_val = fdb_array_at(rets_array, i);
+            if(n_val->retval_==FDB_OK){
+                decode_slice_value(&vals_[i], (fdb_slice_t*)(n_val->val_.vval_), n_val->retval_);        
+                fdb_slice_destroy(n_val->val_.vval_);
+            }else{
+                decode_slice_value(&vals_[i], (fdb_slice_t*)NULL, n_val->retval_);        
+            }
+        }
+        *pvals = vals_;
+    }
+
+    for(size_t i=0; i<length; ++i){
+        fdb_val_node_t *n_fld = fdb_array_at(flds_array, i);
+        fdb_slice_destroy(n_fld->val_.vval_);
+    } 
+
+    fdb_slice_destroy(slice_key);
+    fdb_array_destroy(flds_array);
+    fdb_array_destroy(rets_array);
+    return retval;
 }
 
 int fdb_hdel(fdb_context_t* context,
@@ -331,30 +395,150 @@ int fdb_hdel(fdb_context_t* context,
              size_t length,
              fdb_item_t* flds,
              int64_t *count){
-    return 0;
+    fdb_slot_t* slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_array_t *flds_array = fdb_array_create(8);
+    for(size_t i=0; i<length; ++i){
+        fdb_val_node_t *n_field = fdb_val_node_create();
+        n_field->val_.vval_ = fdb_slice_create(flds[i].data_, flds[i].data_len_);
+        fdb_array_push_back(flds_array, n_field);
+    }
+    int64_t _count = 0;
+    int retval = hash_del(context, slot, slice_key, flds_array, &_count);
+    if(retval == FDB_OK){
+        *count = _count;
+    }
+    for(size_t i=0; i<length; ++i){
+        fdb_val_node_t *n_field = fdb_array_at(flds_array, i);
+        fdb_slice_destroy(n_field->val_.vval_);
+    }
+    fdb_array_destroy(flds_array);
+
+    return retval;
 }
 
 int fdb_hlen(fdb_context_t* context,
              uint64_t id,
              fdb_item_t* key,
              int64_t *length){
-    return 0;
+    fdb_slot_t* slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+
+    int64_t _length = 0;
+    int64_t retval = hash_length(context, slot, slice_key, &_length);
+    if(retval == FDB_OK){
+        *length = _length;
+    }
+    return retval;
 }
 
 
 int fdb_hincrby(fdb_context_t* context,
                 uint64_t id,
                 fdb_item_t* key,
+                fdb_item_t* fld,
                 int64_t by,
                 int64_t* result){
-    return 0;
+    fdb_slot_t* slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_slice_t *slice_fld = fdb_slice_create(fld->data_, fld->data_len_);
+
+    int64_t _result = 0;
+    int retval = hash_incr(context, slot, slice_key, slice_fld, 0, by, &_result);
+    if(retval == FDB_OK){
+        *result = _result;
+    }
+    
+    fdb_slice_destroy(slice_key); 
+    fdb_slice_destroy(slice_fld);
+    return retval; 
 }
 
 int fdb_hexists(fdb_context_t* context,
                 uint64_t id,
                 fdb_item_t* key,
+                fdb_item_t* fld,
                 int64_t* count){
-    return 0;
+    fdb_slot_t* slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_slice_t *slice_fld = fdb_slice_create(fld->data_, fld->data_len_);
+
+    int retval = hash_exists(context, slot, slice_key, slice_fld);
+
+    if(retval == FDB_OK){
+        *count = 1;
+    }else if(retval == FDB_OK_NOT_EXIST){
+        *count = 0;
+    }
+    fdb_slice_destroy(slice_key);
+    fdb_slice_destroy(slice_fld);
+    return retval;
+}
+
+int fdb_hmset(fdb_context_t* context,
+              uint64_t id,
+              fdb_item_t* key,
+              size_t length,
+              fdb_item_t* fvs,
+              int64_t* count){
+    fdb_slot_t* slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_array_t *fvs_array = fdb_array_create(8);
+    for(size_t i=0; i<length; ++i){
+        fdb_val_node_t *node = fdb_val_node_create();
+        node->val_.vval_ = fdb_slice_create(fvs[i].data_, fvs[i].data_len_);
+        fdb_array_push_back(fvs_array, node);
+    }
+    int64_t _count = 0;
+    int retval = hash_mset(context, slot, slice_key, fvs_array, &_count);
+    if(retval == FDB_OK){
+        *count = _count;
+    }
+    for(size_t i=0; i<length; ++i){
+        fdb_val_node_t *node = fdb_array_at(fvs_array, i);
+        fdb_slice_destroy(node->val_.vval_); 
+    }
+    fdb_array_destroy(fvs_array);
+    fdb_slice_destroy(slice_key); 
+    return retval; 
+}
+
+int fdb_hgetall(fdb_context_t* context,
+                uint64_t id,
+                fdb_item_t* key,
+                fdb_item_t** pfvs,
+                int64_t* length){
+    fdb_slot_t* slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_array_t *rets_array = NULL;
+    
+    int retval = hash_getall(context, slot, slice_key, &rets_array);
+    if(retval == FDB_OK){
+        *length = rets_array->length_;
+        fdb_item_t *fld_vals_ = create_fdb_item_array(*length);
+        for(size_t i=0; i<(*length);){
+            fdb_val_node_t *n_fld = fdb_array_at(rets_array, i);
+            if(n_fld->retval_==FDB_OK){
+                decode_slice_value(&fld_vals_[i], (fdb_slice_t*)(n_fld->val_.vval_), n_fld->retval_);        
+                fdb_slice_destroy(n_fld->val_.vval_);
+            }else{
+                decode_slice_value(&fld_vals_[i], (fdb_slice_t*)NULL, n_fld->retval_);        
+            }
+            i++;
+            fdb_val_node_t *n_val = fdb_array_at(rets_array, i++);
+            if(n_val->retval_==FDB_OK){
+                decode_slice_value(&fld_vals_[i], (fdb_slice_t*)(n_val->val_.vval_), n_val->retval_);        
+                fdb_slice_destroy(n_val->val_.vval_);
+            }else{
+                decode_slice_value(&fld_vals_[i], (fdb_slice_t*)NULL, n_val->retval_);         
+            }
+            i++; 
+        } 
+        *pfvs = fld_vals_;
+    }
+    fdb_slice_destroy(slice_key);
+    fdb_array_destroy(rets_array);
+    return retval;
 }
 
 

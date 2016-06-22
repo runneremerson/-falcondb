@@ -25,7 +25,7 @@ int keys_enc(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t
 int keys_exs(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t type);
 
 //del the main key
-int keys_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key);
+int keys_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* count);
 
 //rem the main key
 int keys_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key);

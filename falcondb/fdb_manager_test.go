@@ -99,6 +99,24 @@ func TestString(t *testing.T) {
 	}
 }
 
+func TestHash(t *testing.T) {
+	fdb, _err := GetFdb()
+	if _err != nil {
+		t.Fatalf("newFdbManager error %s\n", _err.Error())
+	}
+	slot := fdb.GetFdbSlot(5)
+	key := []byte("hkey")
+	fld1 := []byte("hfld1")
+	val1 := []byte("hval1")
+
+	ret1, err1 := slot.HSet(key, fld1, val1)
+	if err1 != nil {
+		t.Errorf("HSet key %s field %s val %s  err %d", key, fld1, val1, err1.(*FdbError).Code())
+	} else {
+		t.Logf("HSet cnt %ld", ret1)
+	}
+}
+
 func BenchmarkSet(b *testing.B) {
 	fdb, _err := GetFdb()
 	if _err != nil {
