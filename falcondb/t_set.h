@@ -19,7 +19,7 @@ int decode_sset_key(const char* fdbkey, size_t fdbkeylen, fdb_slice_t **pkey, fd
 
 int set_members(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_array_t** rets);
 
-int set_member_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member);
+int set_member_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, int64_t* count);
 
 int set_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* size);
 

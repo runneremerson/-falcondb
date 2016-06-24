@@ -24,9 +24,12 @@ extern void destroy_fdb_item_array(fdb_item_t* array, size_t size);
 
 extern fdb_item_t* create_fdb_item_array( size_t size);
 
-extern int* create_int_array(size_t size);
+extern double* create_double_array(size_t num);
+extern int* create_int_array(size_t num);
 
-extern void free_int_array(void* array);
+extern void free_int_array(int* array);
+extern void free_double_array(double* array);
+
 
 
 extern int set_fdb_signal_handler(const char* name);
@@ -138,7 +141,78 @@ extern int fdb_hgetall(fdb_context_t* context,
                        fdb_item_t** pfvs,
                        int64_t* length);
 
+extern int fdb_zadd(fdb_context_t* context,
+                    uint64_t id,
+                    fdb_item_t* key,
+                    size_t length,
+                    double* scores,
+                    fdb_item_t* members,
+                    int64_t* count);
 
+extern int fdb_zrem(fdb_context_t* context,
+                    uint64_t id,
+                    fdb_item_t* key,
+                    size_t length,
+                    fdb_item_t* members,
+                    int64_t* count);
+
+extern int fdb_zcard(fdb_context_t* context,
+                     uint64_t id,
+                     fdb_item_t* key,
+                     int64_t* size);
+
+extern int fdb_zscore(fdb_context_t* context,
+                      uint64_t id,
+                      fdb_item_t* key,
+                      fdb_item_t* mbr,
+                      double* score);
+
+extern int fdb_zcount(fdb_context_t* context,
+                      uint64_t id,
+                      fdb_item_t* key,
+                      double start,
+                      double end,
+                      uint8_t type,
+                      int64_t* count);
+
+extern int fdb_zrem_range_by_rank(fdb_context_t* context,
+                                  uint64_t id,
+                                  fdb_item_t* key,
+                                  int start,
+                                  int end,
+                                  int64_t* count);
+
+extern int fdb_zrem_range_by_score(fdb_context_t* context,
+                                   uint64_t id,
+                                   fdb_item_t* key,
+                                   double start,
+                                   double end,
+                                   uint8_t type,
+                                   int64_t *count);
+
+extern int fdb_zrange(fdb_context_t* context,
+                      uint64_t id,
+                      fdb_item_t* key,
+                      int start,
+                      int end,
+                      int reverse,
+                      double** pscores,
+                      fdb_item_t** pmembers,
+                      int64_t* length);
+
+extern int fdb_zrank(fdb_context_t* context,
+                     uint64_t id,
+                     fdb_item_t* key,
+                     fdb_item_t* mbr,
+                     int reverse,
+                     int64_t* rank);
+
+extern int fdb_zincrby(fdb_context_t* context,
+                uint64_t id,
+                fdb_item_t* key,
+                fdb_item_t* mbr,
+                double by,
+                double* result);
 
 #ifdef __cplusplus
 }

@@ -586,15 +586,14 @@ int hash_del(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_arr
     return FDB_OK;
 }
 
-int hash_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field){
+int hash_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, int64_t* count){
     int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_HASH);
     if(retval == FDB_OK){
         fdb_slice_t *slice_val = NULL;
         int ret = hget_one(context, slot, key, field, &slice_val);
-        if(ret == 1){
+        if(ret >= 0){
             retval = FDB_OK;
-        }else if(ret == 0){
-            retval = FDB_OK_NOT_EXIST;
+            *count = (ret==0 ? 0 : 1);
         }else{
             retval = FDB_ERR;
         }

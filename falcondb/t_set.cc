@@ -364,14 +364,13 @@ int set_size(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t
     return retval;
 }
 
-int set_member_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member){ 
+int set_member_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* member, int64_t* count){ 
     int retval = keys_exs(context, slot, key, FDB_DATA_TYPE_SET);
     if(retval == FDB_OK){
         int ret = sget_one(context, slot, key, member);
-        if(ret == 1){
+        if(ret >= 0){
             retval = FDB_OK;
-        }else if(ret == 0){
-            retval = FDB_OK_NOT_EXIST;
+            *count = (ret==0 ? 0 : 1);
         }else{
             retval = FDB_ERR;
         }

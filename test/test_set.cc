@@ -67,11 +67,15 @@ void test_set_rem(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const 
     fdb_array_destroy(members);
 }
 
-void test_set_member_exists(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* smember, int retcode){
+void test_set_member_exists(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* smember, int retcode, int64_t count){
     fdb_slice_t *key = fdb_slice_create(skey, strlen(skey)); 
     fdb_slice_t *mber = fdb_slice_create(smember, strlen(smember));
-    int ret = set_member_exists(ctx, slot, key, mber);
+    int64_t exists_count = -1;
+    int ret = set_member_exists(ctx, slot, key, mber, &exists_count);
     assert(ret == retcode);
+    if(ret == FDB_OK){
+        assert(count == exists_count);
+    }
     fdb_slice_destroy(key);
     fdb_slice_destroy(mber);
 }
@@ -98,9 +102,9 @@ int main(int argc, char* argv[]){
 
     test_set_add(ctx, slots[1], "key1", "member2", FDB_OK, 0);
 
-    test_set_member_exists(ctx, slots[1], "key1", "member2", FDB_OK);
+    test_set_member_exists(ctx, slots[1], "key1", "member2", FDB_OK, 1);
 
-    test_set_member_exists(ctx, slots[1], "key1", "memberx", FDB_OK_NOT_EXIST);
+    test_set_member_exists(ctx, slots[1], "key1", "memberx", FDB_OK, 0);
 
     test_set_size(ctx, slots[1], "key1", FDB_OK, 2);
 

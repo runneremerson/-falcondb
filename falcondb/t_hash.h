@@ -33,7 +33,7 @@ int hash_set(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_sli
 
 int hash_setnx(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, fdb_slice_t* value, int64_t* count);
 
-int hash_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field);
+int hash_exists(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, fdb_slice_t* field, int64_t* count);
 
 int hash_length(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* length);
 

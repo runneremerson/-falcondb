@@ -106,15 +106,100 @@ func TestHash(t *testing.T) {
 	}
 	slot := fdb.GetFdbSlot(5)
 	key := []byte("hkey")
-	fld1 := []byte("hfld1")
-	val1 := []byte("hval1")
+	{
+		fld := []byte("hfld1")
+		val := []byte("hval1")
 
-	ret1, err1 := slot.HSet(key, fld1, val1)
-	if err1 != nil {
-		t.Errorf("HSet key %s field %s val %s  err %d", key, fld1, val1, err1.(*FdbError).Code())
-	} else {
-		t.Logf("HSet cnt %ld", ret1)
+		cnt, err := slot.HSet(key, fld, val)
+		if err != nil {
+			t.Errorf("HSet key %s field %s value %s  err %d", key, fld, val, err.(*FdbError).Code())
+		} else {
+			t.Logf("HSet cnt %d", cnt)
+		}
 	}
+
+	{
+		fld := []byte("hfld1")
+		val, err := slot.HGet(key, fld)
+		if err != nil {
+			t.Errorf("HGet key %s field %s  err %d", key, fld, err.(*FdbError).Code())
+		} else {
+			t.Logf("HGet val %s", val)
+		}
+
+		fld_not_exists := []byte("hfld_not_exists")
+		_, err_not_exists := slot.HGet(key, fld_not_exists)
+		if err_not_exists != nil {
+			t.Logf("HGet key %s field %s code %d", key, fld_not_exists, err_not_exists.(*FdbError).Code())
+		}
+
+	}
+
+	{
+		flds := [...][]byte{[]byte("hfld1"), []byte("hfld2"), []byte("hfld3"), []byte("hfld4")}
+		vals := [...][]byte{[]byte("hfld1"), []byte("hval2"), []byte("hval3"), []byte("hval4")}
+		cnt, err := slot.HMset(key, flds[:], vals[:])
+		if err != nil {
+			t.Errorf("HMset key %s fields %s values %s err %d", key, flds, vals, err.(*FdbError).Code())
+		} else {
+			if cnt != 3 {
+				t.Errorf("HMset key %s cnt %d expect %d", key, cnt, 3)
+			}
+		}
+	}
+
+	{
+		expects := [...][]byte{[]byte("hfld1"), []byte("hval2"), []byte("hval3"), []byte("hval4")}
+
+		flds := [...][]byte{[]byte("hfld1"), []byte("hfld2"), []byte("hfld3"), []byte("hfld4")}
+		vals, err := slot.HMget(key, flds[:]...)
+		if err != nil {
+			t.Errorf("HMget key %s fields %s  err %d", key, flds, err.(*FdbError).Code())
+		} else {
+			for i := 0; i < len(expects); i++ {
+				if bytes.Compare(expects[i], vals[i]) != 0 {
+					t.Errorf("HMget key %s expect %s != value %s", key, expects[i], vals[i])
+				}
+			}
+		}
+	}
+
+	{
+		flds := [...][]byte{[]byte("hfld3"), []byte("hfld4")}
+		cnt, err := slot.HDel(key, flds[:]...)
+		if err != nil {
+			t.Errorf("HDel key %s fields %s  err %d", key, flds, err.(*FdbError).Code())
+		} else {
+			if cnt != 2 {
+				t.Errorf("HDel key %s cnt %d expect %d", key, cnt, 2)
+			}
+		}
+	}
+
+	{
+		length, err := slot.HLen(key)
+		if err != nil {
+			t.Errorf("HLen key %s  err %d", key, err.(*FdbError).Code())
+		} else {
+			if length != 2 {
+				t.Errorf("HLen %s length %d expect %d", key, length, 2)
+			}
+		}
+	}
+
+	{
+		fld := []byte("hfld5")
+		_, _ = slot.HIncrBy(key, fld, 89)
+		val, err := slot.HIncrBy(key, fld, -10)
+		if err != nil {
+			t.Errorf("HIncrBy key %s field %d err %d", key, fld, err.(*FdbError).Code())
+		} else {
+			if val != 79 {
+				t.Errorf("HIncrBy key %s val %d expect %d", key, val, 79)
+			}
+		}
+	}
+
 }
 
 func BenchmarkSet(b *testing.B) {

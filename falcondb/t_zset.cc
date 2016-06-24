@@ -737,13 +737,13 @@ int zset_range(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int r
         const char* fdbkey = fdb_iterator_key_raw(ziterator, &len); 
         fdb_slice_t *zmember = NULL;
         if(decode_zscore_key(fdbkey, len, NULL, &zmember, &score)==0){
-            fdb_val_node_t *mnode = fdb_val_node_create();
-            mnode->val_.vval_ = zmember;
-            fdb_array_push_back(_rets, mnode);
-
             fdb_val_node_t *snode = fdb_val_node_create();
             snode->val_.dval_ = score;
             fdb_array_push_back(_rets, snode); 
+
+            fdb_val_node_t *mnode = fdb_val_node_create();
+            mnode->val_.vval_ = zmember;
+            fdb_array_push_back(_rets, mnode);
         }
         if(fdb_iterator_next(ziterator)){
             break;
@@ -782,13 +782,13 @@ int zset_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, double
         fdb_slice_t *zmember = NULL;
         if(decode_zscore_key(fdbkey, len, NULL, &zmember, &score)==0){
             if(fabs(score_start-score)>0.000001 || !(type&OPEN_ITERVAL_LEFT)){
-                fdb_val_node_t *mnode = fdb_val_node_create();
-                mnode->val_.vval_ = zmember;
-                fdb_array_push_back(_rets, mnode);
-
                 fdb_val_node_t *snode = fdb_val_node_create();
                 snode->val_.dval_ = score;
                 fdb_array_push_back(_rets, snode); 
+
+                fdb_val_node_t *mnode = fdb_val_node_create();
+                mnode->val_.vval_ = zmember;
+                fdb_array_push_back(_rets, mnode);
             }
         }
     }else{
@@ -812,13 +812,13 @@ int zset_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, double
                 fdb_slice_destroy(zmember);
                 break;
             }
-            fdb_val_node_t *mnode = fdb_val_node_create();
-            mnode->val_.vval_ = zmember;
-            fdb_array_push_back(_rets, mnode);
-
             fdb_val_node_t *snode = fdb_val_node_create();
             snode->val_.dval_ = score;
             fdb_array_push_back(_rets, snode); 
+
+            fdb_val_node_t *mnode = fdb_val_node_create();
+            mnode->val_.vval_ = zmember;
+            fdb_array_push_back(_rets, mnode);
         }
     }
 

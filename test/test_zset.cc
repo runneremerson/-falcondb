@@ -15,11 +15,11 @@ void print_zset_range(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, in
     int ret = zset_range(ctx, slot, key, 0, -1, reverse, &range);
     assert(ret == FDB_OK);
     for(int i=0; i<range->length_; ){ 
-        fdb_val_node_t *node1 = fdb_array_at(range, i++);
-        fdb_slice_t *sl = (fdb_slice_t*)(node1->val_.vval_);
-
         fdb_val_node_t *node2 = fdb_array_at(range, i++);
         double score = node2->val_.dval_;
+
+        fdb_val_node_t *node1 = fdb_array_at(range, i++);
+        fdb_slice_t *sl = (fdb_slice_t*)(node1->val_.vval_);
         fprintf(stdout, "range = %lu, member = %s, score =%20f\n", range->length_, fdb_slice_data(sl), score);
         fdb_slice_destroy(sl);
     }
@@ -34,11 +34,11 @@ void print_zset_scan(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, dou
     int ret = zset_scan(ctx, slot, key, start, end, reverse, type, &scan);
     assert(ret == FDB_OK);
     for(int i=0; i<scan->length_; ){
-        fdb_val_node_t *node1 = fdb_array_at(scan, i++);
-        fdb_slice_t *sl = (fdb_slice_t*)(node1->val_.vval_);
-
         fdb_val_node_t *node2 = fdb_array_at(scan, i++);
         double score = node2->val_.dval_;
+
+        fdb_val_node_t *node1 = fdb_array_at(scan, i++);
+        fdb_slice_t *sl = (fdb_slice_t*)(node1->val_.vval_);
         fprintf(stdout, "scan = %lu, member = %s, score =%20f\n", scan->length_, fdb_slice_data(sl), score);
         fdb_slice_destroy(sl);
     }

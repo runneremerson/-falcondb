@@ -7,6 +7,112 @@
 #include <stdio.h>
 #include <string.h>
 
+void test_hash_get(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* sfield, const char* svalue, int retcode){
+    fdb_slice_t* key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t* field = fdb_slice_create(sfield, strlen(sfield));
+    fdb_slice_t* value = NULL;
+
+    int ret = hash_get(ctx, slot, key, field, &value);
+    assert(ret == retcode);
+    if(ret == FDB_OK){
+        if(svalue != NULL){
+            assert(memcmp(fdb_slice_data(value), svalue, fdb_slice_length(value))==0);
+        }
+        fdb_slice_destroy(value);
+    }
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(field);
+}
+
+void test_hash_set(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* sfield, const char* svalue, int retcode, int64_t count){
+    fdb_slice_t* key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t* field = fdb_slice_create(sfield, strlen(sfield));
+    fdb_slice_t* value = fdb_slice_create(svalue, strlen(svalue));
+
+    int64_t set_count = -1;
+    int ret = hash_set(ctx, slot, key, field, value, &set_count);
+    assert(ret == retcode);
+    if(ret == FDB_OK){
+        assert(count == set_count);
+    }
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(field);
+    fdb_slice_destroy(value);
+}
+
+void test_hash_setnx(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* sfield, const char* svalue, int retcode, int64_t count){
+    fdb_slice_t* key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t* field = fdb_slice_create(sfield, strlen(sfield));
+    fdb_slice_t* value = fdb_slice_create(svalue, strlen(svalue));
+
+    int64_t set_count = -1;
+    int ret = hash_setnx(ctx, slot, key, field, value, &set_count);
+    assert(ret == retcode);
+    if(ret == FDB_OK){
+        assert(count == set_count);
+    }
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(field);
+    fdb_slice_destroy(value);
+}
+
+void test_hash_exists(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* sfield, int retcode, int64_t count){
+    fdb_slice_t* key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t* field = fdb_slice_create(sfield, strlen(sfield));
+
+    int64_t exists_count = -1;
+    int ret = hash_exists(ctx, slot, key, field, &exists_count);
+    assert(ret == retcode);
+    assert(count==exists_count);
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(field);
+}
+
+void test_hash_del(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* sfield, int retcode, int count){
+    fdb_slice_t* key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t* field = fdb_slice_create(sfield, strlen(sfield));
+    fdb_array_t* fields = fdb_array_create(2);
+    fdb_val_node_t *node = fdb_val_node_create();
+    node->val_.vval_ = field;
+    fdb_array_push_back(fields, node);
+
+    int64_t del_count = -1;
+    int ret = hash_del(ctx, slot, key, fields, &del_count);
+    assert(ret == retcode);
+    assert(del_count == count);
+    fdb_array_destroy(fields);
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(field);
+}
+
+void test_hash_incr(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, const char* sfield, int64_t init, int64_t by, int64_t val,  int retcode){
+    fdb_slice_t* key = fdb_slice_create(skey, strlen(skey));
+    fdb_slice_t* field = fdb_slice_create(sfield, strlen(sfield));
+
+    int64_t incr_result = -1;
+    int ret = hash_incr(ctx, slot, key, field, init, by, &incr_result);
+    assert(ret == retcode);
+    assert(val == incr_result);
+    fdb_slice_destroy(key);
+    fdb_slice_destroy(field);
+}
+
+void test_hash_length(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, int64_t length, int retcode){
+    fdb_slice_t* key = fdb_slice_create(skey, strlen(skey));
+
+    int64_t hash_length_ = -1;
+    int ret = hash_length(ctx, slot, key, &hash_length_);
+    assert(ret == retcode);
+    if(ret == FDB_OK){
+        assert(hash_length_ == length);
+    }
+    fdb_slice_destroy(key);
+}
+
+void print_hash_getall(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey){
+
+}
+
 
 int main(int argc, char* argv[]){
 
@@ -16,100 +122,31 @@ int main(int argc, char* argv[]){
     fdb_context_drop_slot(ctx, slots[1]);
     fdb_context_create_slot(ctx, slots[1]);
 
-    //hash_get hash_set
-    fdb_slice_t* key1_0 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    fdb_slice_t* fld1 = fdb_slice_create("hash_fld1", strlen("hash_fld1"));
-    fdb_slice_t* val1 = fdb_slice_create("hash_val1", strlen("hash_val1"));
+    test_hash_get(ctx, slots[1], "hash_key1", "hash_fld1", NULL, FDB_OK_NOT_EXIST);
 
-    fdb_slice_t* get_val1 = NULL;
-    int ret = hash_get(ctx, slots[1], key1_0, fld1, &get_val1);
-    assert(ret == FDB_OK_NOT_EXIST);
-    fdb_slice_destroy(key1_0);
+    test_hash_set(ctx, slots[1], "hash_key1", "hash_fld1", "hash_val1", FDB_OK, 1);
 
-    fdb_slice_t* key1_1 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    int64_t set_count = -1;
-    ret = hash_set(ctx, slots[1], key1_1, fld1, val1, &set_count);
-    assert(ret == FDB_OK);
-    assert(set_count == 1);
-    fdb_slice_destroy(key1_1);
+    test_hash_get(ctx, slots[1], "hash_key1", "hash_fld1", "hash_val1", FDB_OK);
 
-    fdb_slice_t* key1_2 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    ret = hash_get(ctx, slots[1], key1_2, fld1, &get_val1);
-    fdb_slice_destroy(key1_2);
+    test_hash_exists(ctx, slots[1], "hash_key1", "hash_fld1", FDB_OK, 1);
 
-    assert(ret == FDB_OK);
-    assert(memcmp(fdb_slice_data(val1), fdb_slice_data(get_val1), fdb_slice_length(val1))==0);
-    fdb_slice_destroy(get_val1);
+    test_hash_del(ctx, slots[1], "hash_key1", "hash_fld1", FDB_OK, 1);
 
+    test_hash_get(ctx, slots[1], "hash_key1", "hash_fld1", NULL, FDB_OK_NOT_EXIST);
 
-    //hash_del hash_exist
-    fdb_slice_t* key1_3 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    ret = hash_exists(ctx, slots[1], key1_3, fld1);
-    assert(ret == FDB_OK);
-    fdb_slice_destroy(key1_3);
+    test_hash_exists(ctx, slots[1], "hash_key1", "hash_fld1", FDB_OK, 0);
 
-    int64_t del_count = -1;
-    fdb_slice_t* key1_4 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    fdb_array_t* flds1 = fdb_array_create(2);
+    test_hash_setnx(ctx, slots[1], "hash_key1", "hash_fld1", "hash_val1", FDB_OK, 1);
 
-    fdb_val_node_t *node1_4 = fdb_val_node_create();
-    node1_4->val_.vval_ = fld1;
-    fdb_array_push_back(flds1, node1_4);
+    test_hash_setnx(ctx, slots[1], "hash_key1", "hash_fld1", "hash_val1", FDB_OK_BUT_ALREADY_EXIST, 1);
 
-    ret = hash_del(ctx, slots[1], key1_4, flds1, &del_count);
-    assert(ret == FDB_OK);
-    assert(del_count == 1);
-    fdb_slice_destroy(key1_4);
-    fdb_array_destroy(flds1);
+    test_hash_incr(ctx, slots[1], "hash_key1", "hash_fld2", 0, 98, 98, FDB_OK);
 
+    test_hash_incr(ctx, slots[1], "hash_key1", "hash_fld2", 0, -1, 97, FDB_OK);
 
-    fdb_slice_t* key1_5 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    ret = hash_get(ctx, slots[1], key1_5, fld1, &get_val1);
-    assert(ret == FDB_OK_NOT_EXIST);
-    fdb_slice_destroy(key1_5);
+    test_hash_length(ctx ,slots[1], "hash_key1", 2, FDB_OK);
 
-    fdb_slice_t* key1_6 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    ret = hash_exists(ctx, slots[1], key1_6, fld1);
-    assert(ret == FDB_OK_NOT_EXIST);
-    fdb_slice_destroy(key1_6);
-
-
-    fdb_slice_t* key1_7 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    set_count = -1;
-    ret = hash_setnx(ctx, slots[1], key1_7, fld1, val1, &set_count);
-    assert(ret == FDB_OK);
-    assert(set_count==1);
-    fdb_slice_destroy(key1_7);
-
-    fdb_slice_t* key1_8 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    set_count = -1;
-    ret = hash_setnx(ctx, slots[1], key1_8, fld1, val1, &set_count);
-    assert(ret == FDB_OK_BUT_ALREADY_EXIST);
-    fdb_slice_destroy(key1_8);
-
-    fdb_slice_t* key1_9 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    fdb_slice_t* fld2 = fdb_slice_create("hash_fld2", strlen("hash_fld2"));
-    int64_t val = 0;
-    ret = hash_incr(ctx, slots[1], key1_9, fld2, 0, 98, &val);
-    assert(ret == FDB_OK);
-    assert(val == 98);
-    fdb_slice_destroy(key1_9);
-
-    fdb_slice_t* key1_10 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    val = 0;
-    ret = hash_incr(ctx, slots[1], key1_9, fld2, 0, -1, &val);
-    assert(ret == FDB_OK);
-    assert(val == 97);
-    fdb_slice_destroy(key1_10);
-
-
-    fdb_slice_t* key1_11 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    int64_t length = 0;
-    ret = hash_length(ctx, slots[1], key1_11, &length);
-    assert(ret == FDB_OK);
-    assert(length == 2);
-    fdb_slice_destroy(key1_11);
-
+    /*
 
     //all
     fdb_slice_t* key1_12 = fdb_slice_create("hash_key1", strlen("hash_key1"));
@@ -226,6 +263,7 @@ int main(int argc, char* argv[]){
     fdb_slice_destroy(fld2);
     fdb_slice_destroy(fld3);
     fdb_slice_destroy(fld4);
+*/
     fdb_context_destroy(ctx);
     return 0;
 }
