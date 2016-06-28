@@ -195,6 +195,9 @@ func (slot *FdbSlot) Get(key []byte) ([]byte, error) {
 		ConvertCItemPointer2GoByte(item_val, 0, &val)
 		return val.Val, nil
 	}
+	if iRet == 3 {
+		return nil, nil
+	}
 
 	return nil, &FdbError{retcode: iRet}
 }
@@ -494,6 +497,9 @@ func (slot *FdbSlot) HLen(key []byte) (int64, error) {
 	if int(ret) == 0 {
 		return int64(length), nil
 	}
+	if int(ret) == 3 {
+		return 0, nil
+	}
 	return 0, &FdbError{retcode: int(ret)}
 }
 
@@ -569,7 +575,6 @@ func (slot *FdbSlot) HSetNX(key, field, value []byte) (int64, error) {
 }
 
 func (slot *FdbSlot) HGetAll(key []byte) ([][]byte, [][]byte, error) {
-	//TODO fix bug
 	lock := slot.fetchKeysLock(string(key))
 	lock.acquire()
 	defer lock.release()
