@@ -149,6 +149,25 @@ func TestHash(t *testing.T) {
 	}
 
 	{
+		expect_flds := [...][]byte{[]byte("hfld1"), []byte("hfld2"), []byte("hfld3"), []byte("hfld4")}
+		expect_vals := [...][]byte{[]byte("hfld1"), []byte("hval2"), []byte("hval3"), []byte("hval4")}
+		flds, vals, err := slot.HGetAll(key)
+		if err != nil {
+			t.Errorf("HGetAll key %s err %d", key, err.(*FdbError).Code())
+		} else {
+			for i := 0; i < len(expect_flds); i++ {
+				if bytes.Compare(expect_flds[i], flds[i]) != 0 {
+					t.Errorf("HGetAll key %s expect field %s != field %s", key, expect_flds[i], flds[i])
+				}
+
+				if bytes.Compare(expect_vals[i], vals[i]) != 0 {
+					t.Errorf("HGetAll key %s expect value %s != value %s", key, expect_vals[i], vals[i])
+				}
+			}
+		}
+	}
+
+	{
 		expects := [...][]byte{[]byte("hfld1"), []byte("hval2"), []byte("hval3"), []byte("hval4")}
 
 		flds := [...][]byte{[]byte("hfld1"), []byte("hfld2"), []byte("hfld3"), []byte("hfld4")}
@@ -197,6 +216,53 @@ func TestHash(t *testing.T) {
 			if val != 79 {
 				t.Errorf("HIncrBy key %s val %d expect %d", key, val, 79)
 			}
+		}
+	}
+
+	{
+		fld_exists := []byte("hfld5")
+		cnt_exists, err_exists := slot.HExists(key, fld_exists)
+		if err_exists != nil {
+			t.Errorf("HExists key %s field %d err %d", key, fld_exists, err_exists.(*FdbError).Code())
+		} else {
+			if cnt_exists != 1 {
+				t.Errorf("HExists key %s cnt %d expect %d", key, cnt_exists, 1)
+			}
+		}
+
+		fld_not_exists := []byte("hfld6")
+		cnt_not_exists, err_not_exists := slot.HExists(key, fld_not_exists)
+		if err_not_exists != nil {
+			t.Errorf("HExists key %s field %d err %d", key, fld_not_exists, err_not_exists.(*FdbError).Code())
+		} else {
+			if cnt_not_exists != 0 {
+				t.Errorf("HExists key %s cnt %d expect %d", key, cnt_not_exists, 0)
+			}
+		}
+
+	}
+
+	{
+		fld := []byte("hfld5")
+		val := []byte("hval5")
+
+		cnt, err := slot.HSetNX(key, fld, val)
+		if err == nil {
+			t.Errorf("HSetNX key %s field %s value %s cnt %d", key, fld, val, cnt)
+		} else {
+			t.Logf("HSetNX key %s field %s value %s err %d", key, fld, val, err.(*FdbError).Code())
+		}
+	}
+
+	{
+		fld := []byte("hfld6")
+		val := []byte("hval6")
+
+		cnt, err := slot.HSetNX(key, fld, val)
+		if err != nil {
+			t.Errorf("HSetNX key %s field %s value %s err %d", key, fld, val, err.(*FdbError).Code())
+		} else {
+			t.Logf("HSetNX key %s field %s value %s cnt %d", key, fld, val, cnt)
 		}
 	}
 

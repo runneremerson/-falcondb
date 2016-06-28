@@ -109,8 +109,21 @@ void test_hash_length(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, in
     fdb_slice_destroy(key);
 }
 
-void print_hash_getall(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey){
+void print_hash_getall(fdb_context_t* ctx, fdb_slot_t* slot, const char* skey, int64_t length, int retcode){
 
+    fdb_slice_t* key = fdb_slice_create(skey, strlen(skey));
+    fdb_array_t *fvs = NULL;
+    int ret = hash_getall(ctx, slot, key, &fvs);
+    assert(retcode == ret);
+    assert(fvs->length_ == length);
+    for(int i=0; i<fvs->length_; ++i){ 
+        fdb_val_node_t *node = fdb_array_at(fvs, i);
+        fdb_slice_t *sl = (fdb_slice_t*)(node->val_.vval_);
+        fprintf(stdout, "%s\n", fdb_slice_data(sl));
+        fdb_slice_destroy(sl);
+    }
+    fdb_array_destroy(fvs);
+    fdb_slice_destroy(key);
 }
 
 
@@ -146,22 +159,12 @@ int main(int argc, char* argv[]){
 
     test_hash_length(ctx ,slots[1], "hash_key1", 2, FDB_OK);
 
+    print_hash_getall(ctx, slots[1], "hash_key1", 2*2, FDB_OK);
+
+
     /*
 
     //all
-    fdb_slice_t* key1_12 = fdb_slice_create("hash_key1", strlen("hash_key1"));
-    fdb_array_t *fvs_rets1 = NULL;
-    ret = hash_getall(ctx, slots[1], key1_12, &fvs_rets1);
-    assert(ret == FDB_OK);
-    assert(fvs_rets1->length_ == 4);
-    for(int i=0; i<fvs_rets1->length_; ++i){ 
-        fdb_val_node_t *node = fdb_array_at(fvs_rets1, i);
-        fdb_slice_t *sl = (fdb_slice_t*)(node->val_.vval_);
-        fprintf(stdout, "%s\n", fdb_slice_data(sl));
-        fdb_slice_destroy(sl);
-    }
-    fdb_array_destroy(fvs_rets1);
-    fdb_slice_destroy(key1_12);
 
     //keys
     fprintf(stdout, "hkeys\n");

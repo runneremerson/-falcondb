@@ -544,7 +544,7 @@ int fdb_hgetall(fdb_context_t* context,
                 decode_slice_value(&_fld_vals[i], (fdb_slice_t*)NULL, n_fld->retval_);        
             }
             i++;
-            fdb_val_node_t *n_val = fdb_array_at(rets_array, i++);
+            fdb_val_node_t *n_val = fdb_array_at(rets_array, i);
             if(n_val->retval_==FDB_OK){
                 decode_slice_value(&_fld_vals[i], (fdb_slice_t*)(n_val->val_.vval_), n_val->retval_);        
                 fdb_slice_destroy(n_val->val_.vval_);

@@ -537,7 +537,7 @@ func (slot *FdbSlot) HExists(key, field []byte) (int64, error) {
 
 	cnt := C.int64_t(0)
 	ret := C.fdb_hexists(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_fld, &cnt)
-	if int(cnt) == 0 {
+	if int(ret) == 0 {
 		return int64(cnt), nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
@@ -569,6 +569,7 @@ func (slot *FdbSlot) HSetNX(key, field, value []byte) (int64, error) {
 }
 
 func (slot *FdbSlot) HGetAll(key []byte) ([][]byte, [][]byte, error) {
+	//TODO fix bug
 	lock := slot.fetchKeysLock(string(key))
 	lock.acquire()
 	defer lock.release()
@@ -588,12 +589,13 @@ func (slot *FdbSlot) HGetAll(key []byte) ([][]byte, [][]byte, error) {
 		ind := 0
 		retfields := make([][]byte, _length)
 		retvalues := make([][]byte, _length)
-		var value FdbValue
 		for i := 0; i < _length; i++ {
-			ConvertCItemPointer2GoByte(item_fvs, ind, &value)
-			retfields[i] = value.Val
+			var field FdbValue
+			ConvertCItemPointer2GoByte(item_fvs, ind, &field)
+			retfields[i] = field.Val
 			ind++
 
+			var value FdbValue
 			ConvertCItemPointer2GoByte(item_fvs, ind, &value)
 			retvalues[i] = value.Val
 			ind++
