@@ -194,8 +194,7 @@ func (slot *FdbSlot) Get(key []byte) ([]byte, error) {
 		var val FdbValue
 		ConvertCItemPointer2GoByte(item_val, 0, &val)
 		return val.Val, nil
-	}
-	if iRet == 3 {
+	} else if iRet == 3 {
 		return nil, nil
 	}
 
@@ -394,6 +393,8 @@ func (slot *FdbSlot) HGet(key, field []byte) ([]byte, error) {
 		var val FdbValue
 		ConvertCItemPointer2GoByte(item_val, 0, &val)
 		return val.Val, nil
+	} else if int(ret) == 3 {
+		return nil, nil
 	}
 
 	return nil, &FdbError{retcode: int(ret)}
@@ -496,8 +497,7 @@ func (slot *FdbSlot) HLen(key []byte) (int64, error) {
 
 	if int(ret) == 0 {
 		return int64(length), nil
-	}
-	if int(ret) == 3 {
+	} else if int(ret) == 3 {
 		return 0, nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
@@ -545,8 +545,7 @@ func (slot *FdbSlot) HExists(key, field []byte) (int64, error) {
 	ret := C.fdb_hexists(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_fld, &cnt)
 	if int(ret) == 0 {
 		return int64(cnt), nil
-	}
-	if int(ret) == 3 {
+	} else if int(ret) == 3 {
 		return 0, nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
@@ -688,8 +687,7 @@ func (slot *FdbSlot) ZCard(key []byte) (int64, error) {
 	ret := C.fdb_zcard(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &size)
 	if int(ret) == 0 {
 		return int64(size), nil
-	}
-	if int(ret) == 3 {
+	} else if int(ret) == 3 {
 		return 0, nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
