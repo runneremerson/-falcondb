@@ -455,6 +455,8 @@ func (slot *FdbSlot) HMget(key []byte, fields ...[]byte) ([][]byte, error) {
 			}
 		}
 		return retvalues, nil
+	} else if int(ret) == 3 {
+		return nil, nil
 	}
 
 	return nil, &FdbError{retcode: int(ret)}
@@ -478,6 +480,8 @@ func (slot *FdbSlot) HDel(key []byte, fields ...[]byte) (int64, error) {
 	ret := C.fdb_hdel(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, C.size_t(len(fields)), (*C.fdb_item_t)(unsafe.Pointer(&item_flds[0])), &cnt)
 	if int(ret) == 0 {
 		return int64(cnt), nil
+	} else if int(ret) == 3 {
+		return 0, nil
 	}
 
 	return 0, &FdbError{retcode: int(ret)}
