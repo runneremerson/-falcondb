@@ -546,6 +546,9 @@ func (slot *FdbSlot) HExists(key, field []byte) (int64, error) {
 	if int(ret) == 0 {
 		return int64(cnt), nil
 	}
+	if int(ret) == 3 {
+		return 0, nil
+	}
 	return 0, &FdbError{retcode: int(ret)}
 }
 
@@ -685,6 +688,9 @@ func (slot *FdbSlot) ZCard(key []byte) (int64, error) {
 	ret := C.fdb_zcard(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &size)
 	if int(ret) == 0 {
 		return int64(size), nil
+	}
+	if int(ret) == 3 {
+		return 0, nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
 }
