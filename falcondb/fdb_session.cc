@@ -747,6 +747,8 @@ int fdb_zrange(fdb_context_t* context,
             decode_slice_value(&_members[i], (fdb_slice_t*)(n_member->val_.vval_), n_member->retval_);        
             fdb_slice_destroy(n_member->val_.vval_); 
         } 
+        *pscores = _scores;
+        *pmembers = _members;
     }
     fdb_slice_destroy(slice_key);
     fdb_array_destroy(sms_array);

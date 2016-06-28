@@ -1,6 +1,7 @@
 package fdb
 
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -75,5 +76,8 @@ func (err *FdbError) Code() int {
 }
 
 func (err *FdbError) Error() string {
+	if len(err.message) == 0 {
+		return fmt.Sprintf("FdbError[%d]", err.retcode)
+	}
 	return err.message
 }
