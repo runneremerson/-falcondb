@@ -354,7 +354,7 @@ func (slot *FdbSlot) MGet(keys ...[]byte) ([][]byte, error) {
 		for i := 0; i < len(keys); i++ {
 			ConvertCItemPointer2GoByte(item_vals, i, &value)
 			retvalues[i] = value.Val
-			if !(value.Ret == 0 || value.Ret == FDB_OK_NOT_EXIST) {
+			if !(value.Ret == 0 || value.Ret == 3) {
 				return nil, &FdbError{retcode: value.Ret}
 			}
 		}
@@ -449,14 +449,21 @@ func (slot *FdbSlot) HMget(key []byte, fields ...[]byte) ([][]byte, error) {
 		var value FdbValue
 		for i := 0; i < len(fields); i++ {
 			ConvertCItemPointer2GoByte(item_vals, i, &value)
-			retvalues[i] = value.Val
-			if !(value.Ret == 0 || value.Ret == FDB_OK_NOT_EXIST) {
+			if value.Ret == 0 {
+				retvalues[i] = value.Val
+			} else if value.Ret == 3 {
+				retvalues[i] = nil
+			} else {
 				return nil, &FdbError{retcode: value.Ret}
 			}
 		}
 		return retvalues, nil
 	} else if int(ret) == 3 {
-		return nil, nil
+		retvalues := make([][]byte, len(fields))
+		for i := 0; i < len(fields); i++ {
+			retvalues[i] = nil
+		}
+		return retvalues, nil
 	}
 
 	return nil, &FdbError{retcode: int(ret)}
@@ -713,6 +720,8 @@ func (slot *FdbSlot) ZScore(key []byte, member []byte) (float64, error) {
 	ret := C.fdb_zscore(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_mbr, &score)
 	if int(ret) == 0 {
 		return float64(score), nil
+	} else if int(ret) == 3 {
+		return 0.0, nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
 }
@@ -735,6 +744,8 @@ func (slot *FdbSlot) ZRem(key []byte, members ...[]byte) (int64, error) {
 	ret := C.fdb_zrem(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, C.size_t(len(members)), (*C.fdb_item_t)(unsafe.Pointer(&item_mbrs[0])), &cnt)
 	if int(ret) == 0 {
 		return int64(cnt), nil
+	} else if int(ret) == 3 {
+		return 0, nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
 }
@@ -752,6 +763,8 @@ func (slot *FdbSlot) ZCount(key []byte, min float64, max float64, rangeType uint
 	ret := C.fdb_zcount(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, C.double(min), C.double(max), C.uint8_t(rangeType), &cnt)
 	if int(ret) == 0 {
 		return int64(cnt), nil
+	} else if int(ret) == 3 {
+		return 0, nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
 }
@@ -768,6 +781,8 @@ func (slot *FdbSlot) ZRemRangeByRank(key []byte, start int, stop int) (int64, er
 	ret := C.fdb_zrem_range_by_rank(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, C.int(start), C.int(stop), &cnt)
 	if int(ret) == 0 {
 		return int64(cnt), nil
+	} else if int(ret) == 3 {
+		return 0, nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
 }
@@ -784,6 +799,8 @@ func (slot *FdbSlot) ZRemRangeByScore(key []byte, min float64, max float64, rang
 	ret := C.fdb_zrem_range_by_score(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, C.double(min), C.double(max), C.uint8_t(rangeType), &cnt)
 	if int(ret) == 0 {
 		return int64(cnt), nil
+	} else if int(ret) == 3 {
+		return 0, nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
 }
