@@ -753,7 +753,7 @@ int fdb_zrange(fdb_context_t* context,
     fdb_slice_destroy(slice_key);
     fdb_array_destroy(sms_array);
 
-    return 0;
+    return retval;
 }
 
 int fdb_zrank(fdb_context_t* context,

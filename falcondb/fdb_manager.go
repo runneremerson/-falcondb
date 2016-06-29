@@ -845,6 +845,8 @@ func (slot *FdbSlot) zrangeByRank(key []byte, start int, stop int, reverse int, 
 			retscores[i] = score
 		}
 		return retmembers, retscores, nil
+	} else if ret > 0 {
+		return nil, nil, nil
 	}
 	return nil, nil, &FdbError{retcode: int(ret)}
 }
