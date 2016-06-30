@@ -280,6 +280,8 @@ int main(int argc, char* argv[]){
     print_zset_scan(ctx, slots[1], "key1", -10000.0, 20000.0, 0, 0);
     test_zset_rem_range_by_score(ctx, slots[1], "key1", FDB_OK, -2000.0, 1400.0, 3, 1);
 
+    test_zset_rem_range_by_score(ctx, slots[1], "key1", FDB_OK, -2000.0, 1400.0, 1, 0);
+
 
     test_zset_size(ctx, slots[1], "key1", FDB_OK, 0);
 
