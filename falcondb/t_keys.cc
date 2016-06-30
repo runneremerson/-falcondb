@@ -220,9 +220,9 @@ static int set_keys_val(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* k
     fdb_slice_string_push_back(slice_val, buff, sizeof(uint32_t));
     if(kval->type_ == FDB_DATA_TYPE_STRING){
         if(kval->slice_!=NULL){
-           fdb_slice_string_push_back(slice_val, 
-                                      fdb_slice_data((fdb_slice_t*)(kval->slice_)), 
-                                      fdb_slice_length((fdb_slice_t*)(kval->slice_)));;
+            fdb_slice_string_push_back(slice_val, 
+                                       fdb_slice_data((fdb_slice_t*)(kval->slice_)), 
+                                       fdb_slice_length((fdb_slice_t*)(kval->slice_)));;
         } 
     }
 
@@ -280,7 +280,7 @@ static int rem_keys_val(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* k
     retval = 1;
 
 end:
-  return retval;
+    return retval;
 }
 
 

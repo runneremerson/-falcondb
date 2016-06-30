@@ -6,6 +6,7 @@ import (
 )
 
 const (
+	FDB_OK_RANGE_HAVE_NONE          = 12
 	FDB_OK_HYPERLOGLOG_NOT_EXIST    = 8
 	FDB_OK_HYPERLOGLOG_EXIST        = 7
 	FDB_OK_SUB_NOT_EXIST            = 6
@@ -26,7 +27,6 @@ const (
 	FDB_ERR_FORBIDDEN_ABOUT_PUBSUB  = -9
 	FDB_ERR_FORBIDDEN_INFO_SLAVEOF  = -10
 	FDB_ERR_VERSION_ERROR           = -11
-	FDB_OK_RANGE_HAVE_NONE          = -12
 	FDB_ERR_WRONG_TYPE_ERROR        = -13
 	FDB_ERR_CNEGO_ERROR             = -14
 	FDB_ERR_IS_NOT_NUMBER           = -15
