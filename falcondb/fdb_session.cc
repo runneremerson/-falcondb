@@ -10,6 +10,7 @@
 #include "t_string.h"
 #include "t_hash.h"
 #include "t_zset.h"
+#include "t_set.h"
 
 #include <string.h>
 #include <assert.h>
@@ -796,6 +797,130 @@ int fdb_zincrby(fdb_context_t* context,
     fdb_slice_destroy(slice_mbr);
     return retval;
 }
+
+int fdb_smembers(fdb_context_t* context,
+                 uint64_t id,
+                 fdb_item_t* key,
+                 fdb_item_t** pmembers,
+                 int64_t* length){
+    fdb_slot_t *slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+ 
+    fdb_array_t *mbr_array = NULL;
+    int retval = set_members(context, slot, slice_key, &mbr_array);
+    if(retval == FDB_OK && mbr_array->length_>0){
+        *length = mbr_array->length_;
+        fdb_item_t *_members = create_fdb_item_array(*length);
+        for(size_t i=0; i<(*length); ++i){ 
+            fdb_val_node_t *n_member = fdb_array_at(mbr_array, i);
+            if(n_member->retval_==FDB_OK){
+                decode_slice_value(&_members[i], (fdb_slice_t*)(n_member->val_.vval_), n_member->retval_);        
+                fdb_slice_destroy(n_member->val_.vval_);
+            }else{
+                decode_slice_value(&_members[i], (fdb_slice_t*)NULL, n_member->retval_);        
+            }
+        } 
+        *pmembers = _members;
+    }
+
+    fdb_slice_destroy(slice_key);
+    fdb_array_destroy(mbr_array);
+    return retval;
+}
+
+int fdb_sismember(fdb_context_t* context,
+                  uint64_t id,
+                  fdb_item_t* key,
+                  fdb_item_t* mbr,
+                  int64_t* count){
+    fdb_slot_t *slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_slice_t *slice_mbr = fdb_slice_create(mbr->data_, mbr->data_len_);
+    
+    int64_t _count = 0;
+    int retval = set_member_exists(context, slot, slice_key, slice_mbr, &_count);
+    if(retval == FDB_OK){
+        *count = _count;
+    }
+    fdb_slice_destroy(slice_key);
+    fdb_slice_destroy(slice_mbr);
+    return retval;
+}
+
+int fdb_scard(fdb_context_t* context,
+              uint64_t id,
+              fdb_item_t* key,
+              int64_t* count){
+    fdb_slot_t *slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+
+    int64_t _count = 0;
+    int retval = set_size(context, slot, slice_key, &_count);
+    if(retval == FDB_OK){
+        *count = _count;
+    }
+    fdb_slice_destroy(slice_key);
+    return retval;
+}
+
+int fdb_srem(fdb_context_t* context,
+             uint64_t id,
+             fdb_item_t* key,
+             size_t length,
+             fdb_item_t* members,
+             int64_t* count){
+    fdb_slot_t *slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_array_t *mbr_array = fdb_array_create(8);
+
+    for(size_t i=0; i<length; ++i){
+        fdb_val_node_t *n_member = fdb_val_node_create();
+        n_member->val_.vval_ = fdb_slice_create(members[i].data_, members[i].data_len_);
+        fdb_array_push_back(mbr_array, n_member); 
+    }
+    int64_t _count = 0;
+    int retval = set_rem(context, slot, slice_key, mbr_array, &_count);
+    if(retval == FDB_OK){
+        *count = _count;
+    }
+    for(int i=0; i<length; ++i){
+        fdb_val_node_t *n_member = fdb_array_at(mbr_array, i);
+        fdb_slice_destroy(n_member->val_.vval_); 
+    }
+    fdb_slice_destroy(slice_key);
+    fdb_array_destroy(mbr_array);
+    return retval;
+}
+
+int fdb_sadd(fdb_context_t* context,
+             uint64_t id,
+             fdb_item_t* key,
+             size_t length,
+             fdb_item_t* members,
+             int64_t* count){
+                 
+    fdb_slot_t *slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    fdb_array_t *mbr_array = fdb_array_create(8);
+    for(size_t i=0; i<length; ++i){
+        fdb_val_node_t *n_member = fdb_val_node_create();
+        n_member->val_.vval_ = fdb_slice_create(members[i].data_, members[i].data_len_);
+        fdb_array_push_back(mbr_array, n_member);
+    }
+    int64_t _count = 0;
+    int retval = set_add(context, slot, slice_key, mbr_array, &_count);
+    if(retval == FDB_OK){
+        *count = _count; 
+    }
+    for(int i=0; i<length; ++i){ 
+        fdb_val_node_t *n_member = fdb_array_at(mbr_array, i);
+        fdb_slice_destroy(n_member->val_.vval_);
+    }
+    fdb_slice_destroy(slice_key);
+    fdb_array_destroy(mbr_array);
+    return retval;
+}
+
 
 
 #ifdef __cplusplus

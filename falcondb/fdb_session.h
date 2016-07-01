@@ -214,6 +214,37 @@ extern int fdb_zincrby(fdb_context_t* context,
                 double by,
                 double* result);
 
+extern int fdb_smembers(fdb_context_t* context,
+                        uint64_t id,
+                        fdb_item_t* key,
+                        fdb_item_t** pmembers,
+                        int64_t* length);
+
+extern int fdb_sismember(fdb_context_t* context,
+                         uint64_t id,
+                         fdb_item_t* key,
+                         fdb_item_t* mbr,
+                         int64_t* count);
+
+extern int fdb_scard(fdb_context_t* context,
+                     uint64_t id,
+                     fdb_item_t* key,
+                     int64_t* count);
+
+extern int fdb_srem(fdb_context_t* context,
+                    uint64_t id,
+                    fdb_item_t* key,
+                    size_t length,
+                    fdb_item_t* members,
+                    int64_t* count);
+
+extern int fdb_sadd(fdb_context_t* context,
+                    uint64_t id,
+                    fdb_item_t* key,
+                    size_t length,
+                    fdb_item_t* members,
+                    int64_t* count);
+
 #ifdef __cplusplus
 }
 #endif

@@ -934,23 +934,131 @@ func (slot *FdbSlot) ZIncrBy(key []byte, delta float64, member []byte) (float64,
 
 //set
 func (slot *FdbSlot) SMembers(key []byte) ([][]byte, error) {
-	return nil, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	item_mbrs := (*C.fdb_item_t)(CNULL)
+	length := C.int64_t(0)
+	ret := C.fdb_smembers(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_mbrs, &length)
+
+	if int(ret) == 0 {
+		defer C.destroy_fdb_item_array(item_mbrs, C.size_t(length))
+
+		_length := int(length)
+		retmembers := make([][]byte, _length)
+		var value FdbValue
+		for i := 0; i < _length; i++ {
+			ConvertCItemPointer2GoByte(item_mbrs, i, &value)
+			retmembers[i] = value.Val
+		}
+		return retmembers, nil
+	} else if ret > 0 {
+		return nil, nil
+	}
+	return nil, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) SIsMember(key []byte, member []byte) (int64, error) {
-	return 0, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	var item_mbr C.fdb_item_t
+	item_mbr.data_ = (*C.char)(unsafe.Pointer(&member[0]))
+	item_mbr.data_len_ = C.uint64_t(len(member))
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_sismember(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &item_mbr, &cnt)
+	if int(ret) == 0 {
+		return int64(cnt), nil
+	} else if int(ret) > 0 {
+		return 0, nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
+
 }
 
 func (slot *FdbSlot) SCard(key []byte) (int64, error) {
-	return 0, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_scard(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &cnt)
+	if int(ret) == 0 {
+		return int64(cnt), nil
+	} else if int(ret) > 0 {
+		return 0, nil
+	}
+
+	return 0, &FdbError{retcode: int(ret)}
 }
 
-func (slot *FdbSlot) SRem(key []byte, args ...[]byte) (int64, error) {
-	return 0, nil
+func (slot *FdbSlot) SRem(key []byte, members ...[]byte) (int64, error) {
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	item_mbrs := make([]C.fdb_item_t, len(members))
+	for i := 0; i < len(members); i++ {
+		item_mbrs[i].data_ = (*C.char)(unsafe.Pointer(&(members[i][0])))
+		item_mbrs[i].data_len_ = C.uint64_t(len(members[i]))
+	}
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_srem(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, C.size_t(len(members)), (*C.fdb_item_t)(unsafe.Pointer(&item_mbrs[0])), &cnt)
+	if int(ret) == 0 {
+		return int64(cnt), nil
+	} else if int(ret) > 0 {
+		return 0, nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
 
-func (slot *FdbSlot) SAdd(key []byte, args ...[]byte) (int64, error) {
-	return 0, nil
+func (slot *FdbSlot) SAdd(key []byte, members ...[]byte) (int64, error) {
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	item_mbrs := make([]C.fdb_item_t, len(members))
+	for i := 0; i < len(members); i++ {
+		item_mbrs[i].data_ = (*C.char)(unsafe.Pointer(&(members[i][0])))
+		item_mbrs[i].data_len_ = C.uint64_t(len(members[i]))
+
+	}
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_sadd(slot.fdb.ctx,
+		C.uint64_t(slot.slot),
+		&item_key,
+		C.size_t(len(members)),
+		(*C.fdb_item_t)(unsafe.Pointer(&item_mbrs[0])),
+		&cnt)
+	if int(ret) == 0 {
+		return int64(cnt), nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) PExpireAt(key []byte, when int64) (int64, error) {
