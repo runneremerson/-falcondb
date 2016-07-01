@@ -846,7 +846,11 @@ func (slot *FdbSlot) zrangeByRank(key []byte, start int, stop int, reverse int, 
 			ConvertCDoublePointer2Go(prim_scrs, i, &score)
 			retscores[i] = score
 		}
-		return retmembers, retscores, nil
+		if withscore {
+			return retmembers, retscores, nil
+		} else {
+			return retmembers, nil, nil
+		}
 	} else if ret > 0 {
 		return nil, nil, nil
 	}
@@ -879,6 +883,8 @@ func (slot *FdbSlot) ZRank(key []byte, member []byte) (int64, error) {
 
 	if int(ret) == 0 {
 		return int64(rank), nil
+	} else if int(ret) > 0 {
+		return int64(-1), nil
 	}
 	return 0, &FdbError{retcode: int(ret)}
 }

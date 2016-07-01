@@ -3,6 +3,7 @@ package fdb
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"strconv"
 	"testing"
 )
@@ -56,7 +57,7 @@ func TestString(t *testing.T) {
 		if err != nil {
 			t.Errorf("Del key %s %s err, err %d", string(key), err.(*FdbError).Code())
 		}
-		t.Logf("Del key %s, %lld", string(key), cnt)
+		t.Logf("Del key %s, %v", string(key), cnt)
 	}
 
 	{
@@ -302,6 +303,18 @@ func TestZSet(t *testing.T) {
 	}
 	slot := fdb.GetFdbSlot(5)
 	key := []byte("ZSetkey") //ZAdd key member score
+
+	{
+		cnt, err := slot.ZCard(key)
+		if err != nil {
+			t.Errorf("ZCard key %s  err %d", key, err.(*FdbError).Code())
+		} else {
+			if cnt != 0 {
+				t.Errorf("ZCard key %s  cnt  %d expect %d", key, cnt, 4)
+			}
+		}
+	}
+
 	{
 		var members [][]byte
 		members = append(members, []byte("member1"))
@@ -315,176 +328,169 @@ func TestZSet(t *testing.T) {
 		scores = append(scores, 3.0)
 		scores = append(scores, 4.0)
 
-		cnt, err := slot.ZCard(key)
-		if err == nil {
-			if cnt != 0 {
-				t.Errorf("ZCard key %s  cnt  %d", key, cnt)
-			}
-		} else {
-			t.Errorf("ZCard key %s  err %d", key, err.(*FdbError).Code())
-		}
-
-		cnt, err = slot.ZAdd(key, members, scores)
+		cnt, err := slot.ZAdd(key, members, scores)
 		if err != nil {
 			t.Errorf("ZAdd key %s members %v scores %v  err %d", key, members, scores, err.(*FdbError).Code())
 		} else {
 			if cnt != 4 {
-				t.Errorf("ZAdd key %s, members %s, scores %s , has added 4 nodes", members, scores)
+				t.Errorf("ZAdd key %s, members %s, scores %s , cnt %d, expect %d", members, scores, cnt, 4)
 			}
 		}
 	}
 
 	{
-
 		cnt, err := slot.ZCard(key)
 		if err != nil {
 			t.Errorf("ZCard key %s  err %d", key, err.(*FdbError).Code())
 		} else {
 			if cnt != 4 {
-				t.Errorf("ZCard key %s  cnt %d, cnt should be 4 .", key, cnt)
-			}
-		}
-		key := []byte("ZSetkey1")
-		cnt, err = slot.ZCard(key)
-		if err != nil {
-			if err.(*FdbError).Code() != 3 {
-				t.Errorf("ZCard key %s  err %d", key, err.(*FdbError).Code())
-			}
-		} else {
-			if cnt != 0 {
-				t.Errorf("ZCard key %s  cnt %d, cnt should be 0 .", key, cnt)
+				t.Errorf("ZCard key %s  cnt %d expect %d", key, cnt, 4)
 			}
 		}
 	}
 
 	{
+		not_exists_key := []byte("not_exists_zkey")
+		cnt, err := slot.ZCard(not_exists_key)
+		if err != nil {
+			t.Errorf("ZCard key %s  err %d", not_exists_key, err.(*FdbError).Code())
+		} else {
+			if cnt != 0 {
+				t.Errorf("ZCard key %s  cnt %d, cnt should be 0 .", not_exists_key, cnt)
+			}
+		}
+	}
 
+	{
 		var score float64
 		member := []byte("member2")
 		score, err := slot.ZScore(key, member)
 		if err != nil {
 			t.Errorf("ZScore key %s  member %s err %d", key, member, err.(*FdbError).Code())
 		} else {
-			if score != 2.0 {
-				t.Errorf("ZScore key %s  member %s score %0.1f,score should be 2.0 .", key, member, score)
+			if math.Abs(score-2.0) > 0.000001 {
+				t.Errorf("ZScore key %s  member %s score %0.1f, expect %0.1f", key, member, score, 2.0)
 			}
 		}
 	}
 
 	{
-
 		member := []byte("member1")
 		cnt, err := slot.ZRem(key, member)
 		if err != nil {
 			t.Errorf("ZRem key %s  member  %s  err %d", key, member, err.(*FdbError).Code())
 		} else {
 			if cnt != 1 {
-				t.Errorf("ZRem key %s member %s cnt %d, cnt should be 1 .", key, member, cnt)
-			}
-		}
-		cnt, err = slot.ZRank(key, member)
-		if err == nil {
-			t.Errorf("ZRank key %s  member  %s offset %d", key, member, cnt)
-		} else {
-			if cnt != 0 && err.(*FdbError).Code() != 3 {
-				t.Errorf("ZRank key %s  member  %s  err %d, err should be 3 .", key, member, err.(*FdbError).Code())
-			}
-		}
-		key := []byte("ZSetkeyTest")
-		cnt, err = slot.ZRank(key, member)
-		if err == nil {
-			t.Errorf("ZRank key %s  member  %s offset %d", key, member, cnt)
-		} else {
-			if cnt != 0 && err.(*FdbError).Code() != 3 {
-				t.Errorf("ZRank key %s  member  %s  err %d, err should be 3 .", key, member, err.(*FdbError).Code())
+				t.Errorf("ZRem key %s member %s cnt %d, expect %d", key, member, cnt, 1)
 			}
 		}
 	}
 
 	{
 		member := []byte("member1")
-		cnt, err := slot.ZRank(key, member)
-		if err == nil {
-			t.Errorf("ZRank key %s  member  %s offset %d", key, member, cnt)
+		rank, err := slot.ZRank(key, member)
+		if err != nil {
+			t.Errorf("ZRank key %s  member %s err %d", key, member, err.(*FdbError).Code())
 		} else {
-			if err.(*FdbError).Code() != 3 && cnt != 0 {
-				t.Errorf("ZRank key %s  member  %s err %d, err should be 3 .", key, member, err.(*FdbError).Code())
+			if rank != -1 {
+				t.Errorf("ZRank key %s member %s rank %d, expect %d", key, member, rank, -1)
 			}
-		}
-
-		member = []byte("member4")
-		cnt, err = slot.ZRank(key, member)
-		if err == nil {
-			if cnt != 2 {
-				t.Errorf("ZRank key %s  member  %s offset %d, the offset should be 2 .", key, member, cnt)
-			}
-		} else {
-			t.Errorf("ZRank key %s  member  %s err %d .", key, member, err.(*FdbError).Code())
-		}
-
-		member = []byte("member2")
-		cnt, err = slot.ZRank(key, member)
-		if err == nil {
-			if cnt != 0 {
-				t.Errorf("ZRank key %s  member  %s offset %d, the offset should be 0 .", key, member, cnt)
-			}
-		} else {
-			t.Errorf("ZRank key %s  member  member2 err %d .", key, err.(*FdbError).Code())
 		}
 	}
 
 	{
-		key := []byte("ZSetkey1")
-
-		zr, zs, err := slot.ZRange(key, 0, 2, true)
+		member := []byte("member1")
+		not_exists_zkey := []byte("not_exists_zkey")
+		rank, err := slot.ZRank(not_exists_zkey, member)
 		if err != nil {
-			t.Errorf("ZRange key %s  err %d .", key, err.(*FdbError).Code())
+			t.Errorf("ZRank key %s member %s err %d", key, member, err.(*FdbError).Code())
 		} else {
-			if len(zr) != 0 {
-				t.Errorf("ZRange key %s  zr is %s .", key, zr)
+			if rank != -1 {
+				t.Errorf("ZRank key %s member %s rank %d expect %d", key, member, rank, -1)
 			}
 		}
 
-		key = []byte("ZSetkey")
+	}
+
+	{
+		member := []byte("member4")
+		rank, err := slot.ZRank(key, member)
+		if err != nil {
+			t.Errorf("ZRank key %s  member  %s err %d", key, member, err.(*FdbError).Code())
+		} else {
+			if rank != 2 {
+				t.Errorf("ZRank key %s  member  %s rank %d, expect %d", key, member, rank, 2)
+			}
+		}
+	}
+
+	{
+		member := []byte("member2")
+		rank, err := slot.ZRank(key, member)
+		if err != nil {
+			t.Errorf("ZRank key %s  member %s err %d", key, member, err.(*FdbError).Code())
+		} else {
+			if rank != 0 {
+				t.Errorf("ZRank key %s  member  %s rank %d, expect %d", key, member, rank, 0)
+			}
+		}
+	}
+
+	{
+		not_exists_key := []byte("not_exists_zkey")
+
+		members, scores, err := slot.ZRange(not_exists_key, 0, 2, true)
+		if err != nil {
+			t.Errorf("ZRange key %s  err %d", key, err.(*FdbError).Code())
+		} else {
+			if len(members) != 0 {
+				t.Errorf("ZRange key %s  members %s scores %s", key, members, scores)
+			}
+		}
+	}
+
+	{
 		member := []byte("member2")
 		cnt, err := slot.ZRem(key, member)
 		if err != nil {
 			t.Errorf("ZRem key %s  member  %s  err %d", key, member, err.(*FdbError).Code())
 		} else {
 			if cnt != 1 {
-				t.Errorf("ZRem key %s member %s cnt %d, cnt should be 1 .", key, member, cnt)
+				t.Errorf("ZRem key %s member %s cnt %d, expect %d", key, member, cnt, 1)
 			}
 		}
+	}
 
-		zr, zs, err = slot.ZRange(key, 0, 1, false)
+	{
+		members, scores, err := slot.ZRange(key, 0, 1, false)
 		if err != nil {
-			t.Errorf("ZRange key %s  err %d .", key, err.(*FdbError).Code())
+			t.Errorf("ZRange key %s  err %d", key, err.(*FdbError).Code())
 		} else {
-			if len(zr) != len(zs) {
-				t.Errorf("ZRange key %s  members %s, withscore error, start 0, stop 1.", key, zr)
-			}
+			t.Logf("ZRange key %s members %s scores %s", key, members, scores)
 		}
-		zr, zs, err = slot.ZRange(key, 0, 2, true)
-		if err != nil {
-			t.Errorf("ZRange key %s  err %d .", key, err.(*FdbError).Code())
-		} else {
-			if len(zr) != len(zs) {
-				t.Errorf("ZRange key %s  withscore error,  tart 2, stop 3.", key)
-			}
-		}
+	}
 
+	{
+		members, scores, err := slot.ZRange(key, 0, 2, true)
+		if err != nil {
+			t.Errorf("ZRange key %s  err %d", key, err.(*FdbError).Code())
+		} else {
+			t.Logf("ZRange key %s members %s scores %v", key, members, scores)
+		}
 	}
 
 	{
 		cnt, err := slot.ZCount(key, 1.0, 5.0, 1)
 		if err != nil {
-			t.Errorf("ZCount key %s from  1.0 to 5.0 type 1  error.", key)
+			t.Errorf("ZCount key %s err %d", key, err.(*FdbError).Code())
 		} else {
 			if cnt != 2 {
-				t.Errorf("ZCount key %s  from  1.0 to 5.0 type 1 cnt is %d. ", key, cnt)
+				t.Errorf("ZCount key %s cnt %d expect %d", key, cnt, 2)
 			}
 		}
+	}
 
+	{
 		var members [][]byte
 		var scores []float64
 		members = append(members, []byte("member1"))
@@ -498,125 +504,119 @@ func TestZSet(t *testing.T) {
 		scores = append(scores, 5.0)
 		scores = append(scores, 4.0)
 		scores = append(scores, 1.0)
-		cnt, err = slot.ZAdd(key, members, scores)
+		cnt, err := slot.ZAdd(key, members, scores)
 		if err != nil {
-			t.Errorf("ZAdd key %s members %s scores %v  err %d", key, members, scores, err.(*FdbError).Code())
+			t.Errorf("ZAdd key %s members %s scores %s  err %d", key, members, scores, err.(*FdbError).Code())
 		} else {
 			if cnt != 3 {
-				t.Errorf("ZAdd key %s members %s scores %v  cnt %d, cnt should be 3.", key, members, scores, cnt)
-			}
-		}
-		cnt, err = slot.ZCount(key, 1.0, 5.0, 1)
-		if err != nil {
-			t.Errorf("ZCount key %s from  1.0 to 5.0 type 1  error.", key)
-		} else {
-			if cnt != 4 {
-				t.Errorf("ZCount key %s  from  1.0 to 5.0 type 1 cnt is %d. ", key, cnt)
-			}
-		}
-		cnt, err = slot.ZCount(key, 1.0, 5.0, 2)
-		if err != nil {
-			t.Errorf("ZCount key %s from  1.0 to 5.0 type 2  error.", key)
-		} else {
-			if cnt != 3 {
-				t.Errorf("ZCount key %s  from  1.0 to 5.0 type 2 cnt is %d. ", key, cnt)
-			}
-		}
-		cnt, err = slot.ZCount(key, 1.0, 5.0, 3)
-		if err != nil {
-			t.Errorf("ZCount key %s from  1.0 to 5.0 type 3  error.", key)
-		} else {
-			if cnt != 2 {
-				t.Errorf("ZCount key %s  from  1.0 to 5.0 type 3 cnt is %d. ", key, cnt)
+				t.Errorf("ZAdd key %s members %s scores %v  cnt %d, expect %d.", key, members, scores, cnt, 3)
 			}
 		}
 	}
 
 	{
+		cnt, err := slot.ZCount(key, 1.0, 5.0, 1)
+		if err != nil {
+			t.Errorf("ZCount key %s  err %d", key, err.(*FdbError).Code())
+		} else {
+			if cnt != 4 {
+				t.Errorf("ZCount key %s cnt %d  expect %d", key, cnt, 4)
+			}
+		}
+	}
+
+	{
+		cnt, err := slot.ZCount(key, 1.0, 5.0, 2)
+		if err != nil {
+			t.Errorf("ZCount key %s err %d", key, err.(*FdbError).Code())
+		} else {
+			if cnt != 3 {
+				t.Errorf("ZCount key %s cnt is %d expect %d", key, cnt, 3)
+			}
+		}
+	}
+
+	{
+		cnt, err := slot.ZCount(key, 1.0, 5.0, 3)
+		if err != nil {
+			t.Errorf("ZCount key %s err %d", key, err.(*FdbError).Code())
+		} else {
+			if cnt != 2 {
+				t.Errorf("ZCount key %s cnt %d expect %d", key, cnt, 2)
+			}
+		}
+	}
+
+	{
+		members, scores, err := slot.ZRange(key, 0, 7, true)
+		if err != nil {
+			t.Errorf("ZRange key %s  err %d", key, err.(*FdbError).Code())
+		} else {
+			t.Logf("ZRange key %s members %s scores %v", key, members, scores)
+		}
+	}
+
+	{
+		cnt, err := slot.ZRemRangeByRank(key, 0, 1)
+		if err != nil {
+			t.Errorf("ZRemRangeByRank key %s err %d", key, err.(*FdbError).Code())
+		} else {
+			if cnt != 2 {
+				t.Errorf("ZRemRangeByRank key %s cnt %d expect %d", key, cnt, 2)
+			}
+		}
+	}
+
+	{
+		members, scores, err := slot.ZRange(key, 0, 7, true)
+		if err != nil {
+			t.Errorf("ZRange key %s  err %d", key, err.(*FdbError).Code())
+		} else {
+			if len(members) != 3 {
+				t.Errorf("ZRange key %s members %s scores %v", key, members, scores)
+			}
+			t.Logf("ZRange key %s members %s scores %v", key, members, scores)
+		}
+	}
+
+	{
+		member := []byte("member1")
+		score, err := slot.ZIncrBy(key, 3.0, member)
+		if err != nil {
+			t.Errorf("ZIncrBy key %s member %s err %d", key, member, err.(*FdbError).Code())
+		} else if math.Abs(score-8.0) > 0.000001 {
+			t.Errorf("ZIncrBy key %s, member %s score %0.1f", key, member, score)
+		}
+	}
+
+	{
 		var members [][]byte
-		var scores []float64
 		members = append(members, []byte("member1"))
 		members = append(members, []byte("member2"))
 		members = append(members, []byte("member3"))
 		members = append(members, []byte("member4"))
 		members = append(members, []byte("member5"))
-
-		scores = append(scores, 5.0)
-		scores = append(scores, 2.0)
-		scores = append(scores, 5.0)
-		scores = append(scores, 4.0)
-		scores = append(scores, 6.0)
-		zr, zs, err := slot.ZRange(key, 0, 7, true)
+		cnt, err := slot.ZRem(key, members...)
 		if err != nil {
-			t.Errorf("ZRange key %s  err %d .", key, err.(*FdbError).Code())
+			t.Errorf("ZRem key %s err %d", key, err.(*FdbError).Code())
 		} else {
-			if string(zr[0]) != "member5" || zs[0] != 1 ||
-				string(zr[1]) != "member2" || zs[1] != 2 ||
-				string(zr[2]) != "member4" || zs[2] != 4 ||
-				string(zr[3]) != "member1" || zs[3] != 5 ||
-				string(zr[4]) != "member3" || zs[4] != 5 {
-				t.Errorf("ZRange key %s, members %s, scores %v", key, zr, zs)
+			if cnt != 3 {
+				t.Errorf("ZRem key %s members %s cnt %d expect %d", key, members, cnt, 3)
 			}
 		}
+	}
 
-		cnt, err := slot.ZRemRangeByRank(key, 0, 1)
+	{
+		members, scores, err := slot.ZRange(key, 0, 7, true)
 		if err != nil {
-			t.Errorf("ZRemRangeByRank key %s, members %s, err %d", key, members, err.(*FdbError).Code())
+			t.Errorf("ZRange key %s  err %d", key, err.(*FdbError).Code())
 		} else {
-			if cnt != 2 {
-				t.Errorf("ZRemRangeByRank key %s, members %s, cnt %d", key, members, cnt)
-			}
-		}
-		zr, zs, err = slot.ZRange(key, 0, 7, true)
-		if err != nil {
-			t.Errorf("ZRange key %s  err %d .", key, err.(*FdbError).Code())
-		} else {
-			if len(zr) != 3 {
-				t.Errorf("ZRange key %s, members %s, scores %v", key, zr, zs)
-			}
-			if string(zr[0]) != "member4" || zs[0] != 4 ||
-				string(zr[1]) != "member1" || zs[1] != 5 ||
-				string(zr[2]) != "member3" || zs[2] != 5 {
-				t.Errorf("ZRemRangeByRank key %s, start 2, stop 1, err", key)
-			}
-		}
-
-		member := []byte("member1")
-		score, err := slot.ZIncrBy(key, 3.0, member)
-		if err != nil {
-			t.Errorf("ZIncrBy key %s, member %s, err %d", key, member, err.(*FdbError).Code())
-		} else if score != 8.0 {
-			t.Errorf("ZIncrBy key %s, member %s, score %0.1f", key, member, score)
-		}
-
-		member = []byte("member5")
-		score, err = slot.ZIncrBy(key, 3.0, member)
-		if err != nil {
-			t.Errorf("ZIncrBy key %s, member %s, err %d", key, member, err.(*FdbError).Code())
-		} else if score != 3.0 {
-			t.Errorf("ZIncrBy key %s, member %s, score %0.1f", key, member, score)
-		}
-
-		cnt, err = slot.ZRem(key, members...)
-		if err != nil {
-			t.Errorf("ZRem key %s, members %s, err %d", key, members, err.(*FdbError).Code())
-		} else {
-			if cnt != 4 {
-				t.Errorf("ZRem key %s, members %s, cnt %d", key, members, cnt)
-			}
-		}
-
-		zr, zs, err = slot.ZRange(key, 0, 7, true)
-		if err != nil {
-			t.Errorf("ZRange key %s  err %d .", key, err.(*FdbError).Code())
-		} else {
-			if len(zr) == len(zs) {
-				if len(zr) != 0 {
-					t.Errorf("ZRem key %s  member %s  scores %v.", key, members, scores)
+			if len(members) == len(scores) {
+				if len(members) != 0 {
+					t.Errorf("ZRem key %s member %s scores %v", key, members, scores)
 				}
 			}
 		}
-
 	}
 
 	{
@@ -638,77 +638,101 @@ func TestZSet(t *testing.T) {
 			t.Errorf("ZAdd key %s members %s scores %v  err %d", key, members, scores, err.(*FdbError).Code())
 		} else {
 			if cnt != 5 {
-				t.Errorf("ZAdd key %s members %s scores %v  cnt %d, cnt should be 5.", key, members, scores, cnt)
+				t.Errorf("ZAdd key %s members %s scores %v  cnt %d expect %d", key, members, scores, cnt, 5)
 			}
 		}
+	}
 
-		zr, zs, err := slot.ZRange(key, 0, 5, true)
+	{
+		members, scores, err := slot.ZRange(key, 0, 5, true)
 		if err != nil {
-			t.Errorf("ZRange key %s start 0, stop 5", key, err.(*FdbError).Code())
+			t.Errorf("ZRange key %s err %d", key, err.(*FdbError).Code())
 		} else {
-			if string(zr[0]) != "member2" || zs[0] != 2.0 ||
-				string(zr[1]) != "member4" || zs[1] != 4.0 ||
-				string(zr[2]) != "member1" || zs[2] != 5.0 ||
-				string(zr[3]) != "member3" || zs[3] != 5.0 ||
-				string(zr[4]) != "member5" || zs[4] != 6.0 {
-				t.Errorf("ZRange key %s start 0, stop 5, member %s, score %v", key, zr, zs)
-			}
+			t.Logf("ZRange key %s members %s scores %v", key, members, scores)
 		}
-		zr, zs, err = slot.ZRevRange(key, 0, 5, true)
-		if err != nil {
-			t.Errorf("ZRange key %s start 0, stop 5", key, err.(*FdbError).Code())
-		} else {
-			if string(zr[0]) != "member5" || zs[0] != 6.0 ||
-				string(zr[1]) != "member3" || zs[1] != 5.0 ||
-				string(zr[2]) != "member1" || zs[2] != 5.0 ||
-				string(zr[3]) != "member4" || zs[3] != 4.0 ||
-				string(zr[4]) != "member2" || zs[4] != 2.0 {
-				t.Errorf("ZRange key %s start 0, stop 5, member %s, score %v", key, zr, zs)
-			}
-		}
+	}
 
-		cnt, err = slot.ZRemRangeByScore(key, 1.0, 2.0, 1)
+	{
+		members, scores, err := slot.ZRevRange(key, 0, 5, true)
 		if err != nil {
-			t.Errorf("ZRemRangeByScore key %s delete members when scores are in 1.0 between 2.0.", key)
+			t.Errorf("ZRange key %s err %d", key, err.(*FdbError).Code())
+		} else {
+			t.Logf("ZRevRange key %s members %s scores %v", key, members, scores)
+		}
+	}
+
+	{
+		cnt, err := slot.ZRemRangeByScore(key, 1.0, 2.0, 1)
+		if err != nil {
+			t.Errorf("ZRemRangeByScore key %s err %d", key, err.(*FdbError).Code())
 		} else {
 			if cnt != 1 {
-				t.Errorf("ZRemRangeByScore key %s delete members when scores are in 1.0 between 2.0 , cnt %d.", key, cnt)
+				t.Errorf("ZRemRangeByScore key %s cnt %d expect %d", key, cnt, 1)
 			}
 		}
-		zr, zs, err = slot.ZRange(key, 0, 5, true)
+	}
+
+	{
+		members, scores, err := slot.ZRange(key, 0, 5, true)
 		if err != nil {
-			t.Errorf("ZRange key %s start 0, stop 5", key, err.(*FdbError).Code())
+			t.Errorf("ZRange key %s err %d", key, err.(*FdbError).Code())
 		} else {
-			t.Logf("zr is %s, zs %v", zr, zs)
+			t.Logf("ZRange key %s members %s scores %v", key, members, scores)
 		}
-		cnt, err = slot.ZRemRangeByScore(key, 1.0, 2.0, 1)
+	}
+
+	{
+		cnt, err := slot.ZRemRangeByScore(key, 1.0, 2.0, 1)
 		if err != nil {
-			t.Errorf("ZRemRangeByScore key %s delete members when scores are in 1.0 between 2.0.", key)
+			t.Errorf("ZRemRangeByScore key %s err %d", key, err.(*FdbError).Code())
 		} else {
 			if cnt != 0 {
-				t.Errorf("ZRemRangeByScore key %s delete members when scores are in 1.0 between 2.0 , cnt %d.", key, cnt)
+				t.Errorf("ZRemRangeByScore key %s cnt %d expect %d", key, cnt, 0)
 			}
 		}
-		zr, zs, err = slot.ZRange(key, 0, 5, true)
+	}
+
+	{
+		members, scores, err := slot.ZRange(key, 0, 5, true)
 		if err != nil {
-			t.Errorf("ZRange key %s start 0, stop 5", key, err.(*FdbError).Code())
+			t.Errorf("ZRange key %s err %d", key, err.(*FdbError).Code())
 		} else {
-			t.Logf("zr is %s, zs is %v", zr, zs)
+			t.Logf("ZRange key %s members %s, scores is %v", key, members, scores)
 		}
-		cnt, err = slot.ZAdd(key, members, scores)
+	}
+
+	{
+		var members [][]byte
+		var scores []float64
+		members = append(members, []byte("member1"))
+		members = append(members, []byte("member2"))
+		members = append(members, []byte("member3"))
+		members = append(members, []byte("member4"))
+		members = append(members, []byte("member5"))
+
+		scores = append(scores, 5.0)
+		scores = append(scores, 2.0)
+		scores = append(scores, 5.0)
+		scores = append(scores, 4.0)
+		scores = append(scores, 6.0)
+
+		cnt, err := slot.ZAdd(key, members, scores)
 		if err != nil {
 			t.Errorf("ZAdd key %s members %s scores %v  err %d", key, members, scores, err.(*FdbError).Code())
 		} else {
-			if cnt != 2 {
-				t.Errorf("ZAdd key %s members %s scores %v  cnt %d, cnt should be 2.", key, members, scores, cnt)
+			if cnt != 1 {
+				t.Errorf("ZAdd key %s cnt %d expect %d", key, members, scores, cnt, 1)
 			}
 		}
-		cnt, err = slot.ZRemRangeByScore(key, 1.0, 2.0, 1)
+	}
+
+	{
+		cnt, err := slot.ZRemRangeByScore(key, 1.0, 2.0, 1)
 		if err != nil {
-			t.Errorf("ZRemRangeByScore key %s delete members when scores are in 1.0 between 2.0.", key)
+			t.Errorf("ZRemRangeByScore key %s err %d", key, err.(*FdbError).Code())
 		} else {
-			if cnt != 0 {
-				t.Errorf("ZRemRangeByScore key %s delete members when scores are in 1.0 between 2.0 , cnt %d.", key, cnt)
+			if cnt != 1 {
+				t.Errorf("ZRemRangeByScore key %s cnt %d expect %d", key, cnt, 1)
 			}
 		}
 	}

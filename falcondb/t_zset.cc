@@ -665,7 +665,9 @@ int zset_count(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, doubl
         size_t len = 0;
         const char* fdbkey = fdb_iterator_key_raw(ziterator, &len); 
         if(decode_zscore_key(fdbkey, len, NULL, NULL, &score)==0){
-            if(fabs(score_start-score)>0.000001 || !(type&OPEN_ITERVAL_LEFT)){
+            if((score_start<score && score<score_end) || 
+               (fabs(score-score_start)<=0.000001 && !(type&OPEN_ITERVAL_LEFT)) ||
+               (fabs(score-score_end)<=0.000001 && !(type&OPEN_ITERVAL_RIGHT))){
                 _count++; 
             }
         }
@@ -781,7 +783,7 @@ int zset_scan(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, double
         const char* fdbkey = fdb_iterator_key_raw(ziterator, &len); 
         fdb_slice_t *zmember = NULL;
         if(decode_zscore_key(fdbkey, len, NULL, &zmember, &score)==0){
-            if(fabs(score_start-score)>0.000001 || !(type&OPEN_ITERVAL_LEFT)){
+            if((score_start<score && score<score_end) || (fabs(score-score_start)<=0.000001 && !(type&OPEN_ITERVAL_LEFT))){
                 fdb_val_node_t *snode = fdb_val_node_create();
                 snode->val_.dval_ = score;
                 fdb_array_push_back(_rets, snode); 
@@ -923,7 +925,9 @@ int zset_rem_range_by_score(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_
         const char* fdbkey = fdb_iterator_key_raw(ziterator, &len); 
         fdb_slice_t *zmember = NULL;
         if(decode_zscore_key(fdbkey, len, NULL, &zmember, &score)==0){
-            if(fabs(score_start-score)>0.000001 || !(type&OPEN_ITERVAL_LEFT)){
+            if((score_start<score && score<score_end) || 
+               (fabs(score-score_start)<=0.000001 && !(type&OPEN_ITERVAL_LEFT)) ||
+               (fabs(score-score_end)<=0.000001 && !(type&OPEN_ITERVAL_RIGHT))){
                 int ret = zrem_one(context, slot, key, zmember);
                 if(ret >= 0){
                     if(ret > 0){
