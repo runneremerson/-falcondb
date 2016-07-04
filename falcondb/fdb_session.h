@@ -245,6 +245,24 @@ extern int fdb_sadd(fdb_context_t* context,
                     fdb_item_t* members,
                     int64_t* count);
 
+extern int fdb_pexpire_at(fdb_context_t* context,
+                   uint64_t id,
+                   fdb_item_t* key,
+                   int64_t ts,
+                   int64_t* count);
+
+
+extern int fdb_pexpire_left(fdb_context_t* context,
+                     uint64_t id,
+                     fdb_item_t* key,
+                     int64_t* pttl);
+
+
+extern int fdb_pexpire_persist(fdb_context_t* context,
+                        uint64_t id,
+                        fdb_item_t* key,
+                        int64_t* count);
+
 #ifdef __cplusplus
 }
 #endif

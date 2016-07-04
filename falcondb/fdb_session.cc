@@ -6,6 +6,7 @@
 #include "fdb_define.h"
 #include "fdb_object.h"
 
+#include "util.h"
 #include "t_keys.h"
 #include "t_string.h"
 #include "t_hash.h"
@@ -137,16 +138,42 @@ int fdb_set(fdb_context_t* context,
     slice_val = fdb_slice_create(val->data_, val->data_len_);
     if(en == IS_NOT_EXIST){
         retval = string_setnx(context, slot, slice_key, slice_val);
-        if(retval == FDB_OK_BUT_ALREADY_EXIST){
-            *ef = 0;
-        }else if(retval == FDB_OK){
+        if(retval == FDB_OK){
             *ef = 1;
+        }else{
+            *ef = 0;
         }
         
     } else if(en == IS_EXIST){
         retval = string_set(context, slot, slice_key, slice_val);
     } else if(en == IS_EXIST_AND_EXPIRE){
+        retval = string_set(context, slot, slice_key, slice_val);
+        if(retval == FDB_OK){
+            fdb_slice_t *expiring_key = fdb_slice_create(key->data_, key->data_len_);
+            int64_t ts = time_ms() + duration*1000;
+            int64_t _count = 0;
+            retval = keys_pexpire_at(context, slot, expiring_key, ts, &_count);
+            if(retval == FDB_OK){
+                *ef = _count;
+            }else{
+                *ef = 0;
+            }
+            fdb_slice_destroy(expiring_key);
+        }
     } else if(en == IS_NOT_EXIST_AND_EXPIRE){
+        retval = string_setnx(context, slot, slice_key, slice_val);
+        if(retval == FDB_OK){
+            fdb_slice_t *expiring_key = fdb_slice_create(key->data_, key->data_len_);
+            int64_t ts = time_ms() + duration*1000;
+            int64_t _count = 0;
+            retval = keys_pexpire_at(context, slot, expiring_key, ts, &_count);
+            if(retval == FDB_OK){
+                *ef = _count;
+            }else{
+                *ef = 0;
+            }
+            fdb_slice_destroy(expiring_key);
+        }
     }
 
     fdb_slice_destroy(slice_key);
@@ -921,6 +948,54 @@ int fdb_sadd(fdb_context_t* context,
     return retval;
 }
 
+int fdb_pexpire_at(fdb_context_t* context,
+                   uint64_t id,
+                   fdb_item_t* key,
+                   int64_t ts,
+                   int64_t* count){
+    fdb_slot_t *slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+
+    int64_t _count = 0;
+    int retval = keys_pexpire_at(context, slot, slice_key, ts, &_count);
+    if(retval == FDB_OK){
+        *count = _count;
+    }
+    fdb_slice_destroy(slice_key);
+    return retval;
+}
+
+int fdb_pexpire_left(fdb_context_t* context,
+                     uint64_t id,
+                     fdb_item_t* key,
+                     int64_t* pttl){
+    fdb_slot_t *slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    
+    int64_t _left = 0;
+    int retval = keys_pexpire_left(context, slot, slice_key, &_left);
+    if(retval == FDB_OK){
+        *pttl = _left;
+    }
+    fdb_slice_destroy(slice_key);
+    return retval;
+}
+
+int fdb_pexpire_persist(fdb_context_t* context,
+                        uint64_t id,
+                        fdb_item_t* key,
+                        int64_t* count){
+    fdb_slot_t *slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+
+    int64_t _count = 0;
+    int retval = keys_pexpire_persist(context, slot, slice_key, &_count);
+    if(retval == FDB_OK){
+        *count = _count;
+    }
+    fdb_slice_destroy(slice_key);
+    return retval;
+}
 
 
 #ifdef __cplusplus

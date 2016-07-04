@@ -33,4 +33,11 @@ int keys_rem(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key);
 //get the main key type 
 int keys_get(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, uint8_t* type);
 
+
+int keys_pexpire_at(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t ts, int64_t* count);
+
+int keys_pexpire_left(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* left);
+
+int keys_pexpire_persist(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* count);
+
 #endif //FDB_T_KEYS_H
