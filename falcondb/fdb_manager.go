@@ -1062,11 +1062,44 @@ func (slot *FdbSlot) SAdd(key []byte, members ...[]byte) (int64, error) {
 }
 
 func (slot *FdbSlot) PExpireAt(key []byte, when int64) (int64, error) {
-	return 0, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_pexpire_at(slot.fdb.ctx,
+		C.uint64_t(slot.slot),
+		&item_key,
+		C.int64_t(when),
+		&cnt)
+	if int(ret) == 0 {
+		return int64(cnt), nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) PTTL(key []byte) (int64, error) {
-	return 0, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	left := C.int64_t(0)
+	ret := C.fdb_pexpire_left(slot.fdb.ctx,
+		C.uint64_t(slot.slot),
+		&item_key,
+		&left)
+	if int(ret) == 0 {
+		return int64(left), nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
 
 func (slot *FdbSlot) Type(key []byte) ([]byte, error) {
@@ -1074,5 +1107,22 @@ func (slot *FdbSlot) Type(key []byte) ([]byte, error) {
 }
 
 func (slot *FdbSlot) Persist(key []byte) (int64, error) {
-	return 0, nil
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	var item_key C.fdb_item_t
+	item_key.data_ = (*C.char)(unsafe.Pointer(&key[0]))
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	cnt := C.int64_t(0)
+	ret := C.fdb_pexpire_persist(slot.fdb.ctx,
+		C.uint64_t(slot.slot),
+		&item_key,
+		&cnt)
+
+	if int(ret) == 0 {
+		return int64(cnt), nil
+	}
+	return 0, &FdbError{retcode: int(ret)}
 }
