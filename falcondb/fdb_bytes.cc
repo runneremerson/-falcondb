@@ -62,6 +62,26 @@ int fdb_bytes_read_uint16(fdb_bytes_t* bytes, uint16_t* val){
   return sizeof(uint16_t);
 }
 
+int fdb_bytes_read_int32(fdb_bytes_t* bytes, int32_t* val){
+  if(bytes->length_ < sizeof(int32_t)){
+    return -1;
+  }
+  *val = rocksdb_decode_fixed32(bytes->data_);
+  bytes->data_ += sizeof(int32_t);
+  bytes->length_ -= sizeof(int32_t);
+  return sizeof(int32_t);
+}
+
+int fdb_bytes_read_uint32(fdb_bytes_t* bytes, uint32_t* val){
+  if(bytes->length_ < sizeof(uint32_t)){
+    return -1;
+  }
+  *val = rocksdb_decode_fixed32(bytes->data_);
+  bytes->data_ += sizeof(uint32_t);
+  bytes->length_ -= sizeof(uint32_t);
+  return sizeof(uint32_t);
+}
+
 int fdb_bytes_read_int64(fdb_bytes_t* bytes, int64_t* val){
   if(bytes->length_ < sizeof(int64_t)){
     return -1;

@@ -17,6 +17,15 @@ typedef struct fdb_item_t{
     int64_t retval_;
 } fdb_item_t;
 
+typedef struct fdb_keys_t{
+    void* self_iter_;
+} fdb_keys_t;
+
+typedef struct fdb_dels_t{
+    void* self_iter_;
+    void* type_iter_;
+} fdb_dels_t;
+
 
 extern void free_fdb_item(fdb_item_t* item);
 
@@ -30,6 +39,10 @@ extern int* create_int_array(size_t num);
 extern void free_int_array(int* array);
 extern void free_double_array(double* array);
 
+//keys
+extern fdb_iter_t* create_fdb_keys_iter();
+
+extern void destroy_fdb_keys_iter(fdb_iter_t* iter);
 
 
 extern int set_fdb_signal_handler(const char* name);

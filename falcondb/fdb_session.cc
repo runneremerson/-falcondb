@@ -90,11 +90,6 @@ void free_double_array(double* array){
 }
 
 
-
-
-
-
-
 enum ExistOrNot
 {
     IS_NOT_EXIST = 0, //nx
