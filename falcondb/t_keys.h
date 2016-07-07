@@ -43,13 +43,12 @@ int keys_pexpire_left(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key
 int keys_pexpire_persist(fdb_context_t* context, fdb_slot_t* slot, fdb_slice_t* key, int64_t* count);
 
 //keys traversal
-void keys_self_traversal_create(fdb_context_t* context, fdb_slot_t* slot, fdb_iterator_t** iter);
+int keys_self_traversal_create(fdb_context_t* context, fdb_slot_t* slot, fdb_iterator_t** iter, uint64_t limit);
 
 void keys_self_traversal_destroy(fdb_iterator_t* iter);
 
-int keys_self_traversal_work(fdb_context_t* context, fdb_slot_t* slot, fdb_array_t **rets, fdb_iterator_t* iter, int64_t limit);
+int keys_self_traversal_work(fdb_context_t* context, fdb_slot_t* slot, fdb_array_t **rets, fdb_iterator_t* iter, uint64_t limit);
 
-//dels traversal
 
 
 
