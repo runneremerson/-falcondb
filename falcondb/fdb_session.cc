@@ -90,6 +90,7 @@ void free_double_array(double* array){
 }
 
 
+
 enum ExistOrNot
 {
     IS_NOT_EXIST = 0, //nx
@@ -120,6 +121,62 @@ void fdb_drop_slot(fdb_context_t* context, uint64_t id){
 }
 
 
+
+//keys
+fdb_keys_t* create_fdb_keys(fdb_context_t* context, uint64_t id, uint64_t limit){
+    fdb_slot_t *slot = get_slot(context, id);
+    fdb_iterator_t *self_iter = NULL;
+    if(keys_self_traversal_create(context, slot,  &self_iter, limit)==0){
+        fdb_keys_t *keys = (fdb_keys_t*)fdb_malloc(sizeof(fdb_keys_t));
+        keys->self_iter_ = self_iter;
+        return keys;
+    }
+    return NULL;
+}
+
+void destroy_fdb_keys(fdb_keys_t* keys){
+    if(keys->self_iter_!=NULL){
+        keys_self_traversal_destroy((fdb_iterator_t*)(keys->self_iter_));
+    }
+    fdb_free(keys);
+}
+
+void clean_fdb_expired_key(fdb_context_t* context, uint64_t id, fdb_item_t* key, int64_t* count){
+    fdb_slot_t *slot = get_slot(context, id);
+    fdb_slice_t *slice_key = fdb_slice_create(key->data_, key->data_len_);
+    
+    int64_t _count = 0;
+    int retval = keys_clr(context, slot, slice_key, &_count);
+    if(retval == FDB_OK){
+        *count = _count;
+    }
+    fdb_slice_destroy(slice_key);
+}
+
+
+void iterate_fdb_expired_keys(fdb_keys_t* keys, uint64_t max, fdb_item_t** pks, int64_t* length){
+    fdb_array_t *array = NULL;
+    int ret = keys_self_traversal_work((fdb_iterator_t*)(keys->self_iter_), &array, max);
+    if(ret > 0){
+        *length = array->length_;
+        fdb_item_t *_items = create_fdb_item_array(*length);
+        for(size_t i=0; i<(*length); ++i){ 
+            fdb_val_node_t *n_item = fdb_array_at(array, i);
+            if(n_item->retval_==FDB_OK){
+                decode_slice_value(&_items[i], (fdb_slice_t*)(n_item->val_.vval_), n_item->retval_);        
+                fdb_slice_destroy(n_item->val_.vval_);
+            }else{
+                decode_slice_value(&_items[i], (fdb_slice_t*)NULL, n_item->retval_);        
+            }
+        } 
+    }else{
+        *length = 0;
+    }
+}
+//dels
+
+
+//cmds
 int fdb_set(fdb_context_t* context,
             uint64_t id,
             fdb_item_t* key,

@@ -763,15 +763,37 @@ void keys_self_traversal_destroy(fdb_iterator_t* iter){
     fdb_iterator_destroy(iter);
 }
 
-int keys_self_traversal(fdb_context_t* context, fdb_slot_t* slot, fdb_array_t **rets, fdb_iterator_t* iter, uint64_t limit){
+int keys_self_traversal_work(fdb_iterator_t* iter, fdb_array_t **rets, uint64_t max){
+    fdb_array_t *array = fdb_array_create(32);
+    
+    int64_t now = (int64_t)time_ms();
+    uint64_t _count = 0;
+    do{ 
+        if(max==_count) break;
+        size_t rklen = 0, rvlen = 0;
+        const char* rkey = fdb_iterator_key_raw(iter, &rklen);
+        const char* rval = fdb_iterator_val_raw(iter, &rvlen);
+        keys_val_t* kval = NULL;
+        if(decode_keys_val(rval, rvlen, &kval)==0){
+            if(kval->ts_>0 && kval->ts_<=now && kval->stat_ == FDB_KEY_STAT_NORMAL){
+                fdb_slice_t *_key = NULL;
+                if(decode_keys_key(rkey, rklen, &_key)==0){
+                    fdb_val_node_t* knode = fdb_val_node_create();            
+                    knode->retval_ = FDB_OK;
+                    knode->val_.vval_ = _key;
+                    fdb_array_push_back(array, knode); 
+                    ++_count;
+                }
+            }
+            destroy_keys_val(kval);
+        }
+    }while(!fdb_iterator_next(iter));
 
-    //fdb_array_t *array = fdb_array_create(128);
-    //do{ 
-    //    size_t rklen = 0, rvlen = 0;
-    //    const char* rkey = fdb_iterator_key_raw(iterator, &rklen);
-    //    const char* rval = fdb_iterator_val_raw(iterator, &rvlen);
-
-    //}
-    return 0;
+    if(array->length_ > 0){
+        *rets = array;
+    }else{
+        fdb_array_destroy(array);
+    }
+    return (int)_count;
 }
 

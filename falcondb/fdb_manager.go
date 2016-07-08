@@ -9,6 +9,7 @@ import "C"
 import (
 	"hash/crc32"
 	"sync"
+	"time"
 	"unsafe"
 )
 
@@ -143,6 +144,11 @@ func (fdb *FdbManager) InitDB(file_path string, cache_size int, write_buffer_siz
 		for j := 0; j < LOCK_KEY_NUM; j++ {
 			fdb.slots[i].lockKeys[j].pref = &(fdb.slots[i].lockSlot.lock)
 		}
+
+		//keys
+		go fdb.slots[i].keysCleaningHelper(i)
+
+		//dels
 	}
 	fdb.inited = true
 	return nil
@@ -169,6 +175,54 @@ func (slot *FdbSlot) fetchSlotLock() *FdbLock {
 
 func (slot *FdbSlot) GetSlotID() uint64 {
 	return slot.slot
+}
+
+func (slot *FdbSlot) keysCleaningHelper(ind int) {
+	for {
+		time.Sleep(time.Duration(3600*ind) * time.Second)
+
+		keys := C.create_fdb_keys(slot.fdb.ctx, C.uint64_t(slot.slot), C.uint64_t(20*1000*1000))
+		if keys != (*C.fdb_keys_t)(CNULL) {
+			for {
+				time.Sleep(time.Duration(1) * time.Second)
+
+				item_keys := (*C.fdb_item_t)(CNULL)
+				length := C.int64_t(0)
+				limit := C.uint64_t(1000)
+				C.iterate_fdb_expired_keys(keys, limit, &item_keys, &length)
+				for i := 0; i < int(length); i++ {
+					var value FdbValue
+					ConvertCItemPointer2GoByte(item_keys, i, &value)
+					if value.Val != nil {
+						slot.CleanExpiredKey(value.Val)
+					}
+				}
+				if uint64(length) < uint64(limit) {
+					break
+				}
+			}
+			C.destroy_fdb_keys(keys)
+		}
+	}
+}
+
+func (slot *FdbSlot) delsCleaningHelper() {
+}
+
+func (slot *FdbSlot) CleanExpiredKey(key []byte) int64 {
+	lock := slot.fetchKeysLock(string(key))
+	lock.acquire()
+	defer lock.release()
+
+	csKey := (*C.char)(unsafe.Pointer(&key[0]))
+
+	var item_key C.fdb_item_t
+	item_key.data_ = csKey
+	item_key.data_len_ = C.uint64_t(len(key))
+
+	cnt := C.int64_t(0)
+	C.clean_fdb_expired_key(slot.fdb.ctx, C.uint64_t(slot.slot), &item_key, &cnt)
+	return int64(cnt)
 }
 
 func (slot *FdbSlot) Get(key []byte) ([]byte, error) {

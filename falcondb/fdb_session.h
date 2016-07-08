@@ -39,16 +39,21 @@ extern int* create_int_array(size_t num);
 extern void free_int_array(int* array);
 extern void free_double_array(double* array);
 
-//keys
-extern fdb_keys_t* create_fdb_keys_iter();
-
-extern void destroy_fdb_keys_iter(fdb_keys_t* iter);
-
-
 extern int set_fdb_signal_handler(const char* name);
 
 extern void fdb_drop_slot(fdb_context_t* context, uint64_t id);
 
+
+
+//keys
+extern fdb_keys_t* create_fdb_keys(fdb_context_t* context, uint64_t id, uint64_t limit);
+extern void iterate_fdb_expired_keys(fdb_keys_t* keys, uint64_t max, fdb_item_t** pks, int64_t* length);
+extern void clean_fdb_expired_key(fdb_context_t* context, uint64_t id, fdb_item_t* key, int64_t* count);
+extern void destroy_fdb_keys(fdb_keys_t* keys);
+
+//dels
+
+//cmds
 extern int fdb_set(fdb_context_t* context,
             uint64_t id,
             fdb_item_t* key,
